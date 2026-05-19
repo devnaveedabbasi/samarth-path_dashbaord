@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --primary: #FF6B00;
+  --primary-dark: #E05A00;
+  --primary-light: #FF8533;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+ --color-primary-50:  #fff7f2;
+--color-primary-100: #ffe6d8;
+--color-primary-200: #ffc8a8;
+--color-primary-300: #ffa974;
+--color-primary-400: #ff8a4a;
+--color-primary-500: #E8935C;
+--color-primary-600: #d97f47;
+--color-primary-700: #b66538;
+--color-primary-800: #924f2b;
+--color-primary-900: #6f3b1f;
+--color-primary-950: #3d1f10;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-poppins), "Poppins", system-ui, -apple-system, sans-serif;
+}
+
+/* Custom utility classes */
+.bg-primary {
+  background-color: #FF6B00;
+}
+
+.bg-primary-dark {
+  background-color: #E05A00;
+}
+
+.bg-primary-light {
+  background-color: #FF8533;
+}
+
+.text-primary {
+  color: #FF6B00;
+}
+
+.hover\:bg-primary-dark:hover {
+  background-color: #E05A00;
+}
+
+.hover\:text-primary-dark:hover {
+  color: #E05A00;
+}
+
+.border-primary {
+  border-color: #FF6B00;
+}
+
+.focus\:ring-primary:focus {
+  --tw-ring-color: #FF6B00;
+}
+
+.accent-primary {
+  accent-color: #FF6B00;
+}@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.12s ease-out;
+}
