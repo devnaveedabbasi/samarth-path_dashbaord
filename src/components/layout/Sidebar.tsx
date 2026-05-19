@@ -115,7 +115,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         `}
       >
         {/* Logo */}
-        <div className="h-16 flex items-center justify-between gap-2.5 px-5 border-b border-gray-100 flex-shrink-0">
+        <div className="h-16 flex items-center justify-between gap-2.5 px-5 border-b border-gray-100 shrink-0">
           <div className="flex items-center gap-2.5">
             {/* <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center flex-shrink-0"> */}
               <Image

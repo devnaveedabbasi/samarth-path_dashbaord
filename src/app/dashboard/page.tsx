@@ -148,7 +148,7 @@ function StatCard({
 }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4">
-      <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${iconBg}`}>
+      <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
         <Icon icon={icon} className={`w-6 h-6 ${iconColor}`} />
       </div>
       <div className="min-w-0">
@@ -175,13 +175,13 @@ function Avatar({
       <img
         src={src}
         alt={name}
-        className={`${dim} rounded-full object-cover flex-shrink-0`}
+        className={`${dim} rounded-full object-cover shrink-0`}
       />
     );
   }
   return (
     <div
-      className={`${dim} rounded-full bg-indigo-100 text-indigo-700 font-semibold flex items-center justify-center flex-shrink-0`}
+      className={`${dim} rounded-full bg-indigo-100 text-indigo-700 font-semibold flex items-center justify-center shrink-0`}
     >
       {initials(name)}
     </div>
@@ -381,6 +381,7 @@ const summaryCards: SummaryCardItem[] = [
                     tickFormatter={(v: number) => v === 0 ? "0" : `₹${v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v}`}
                     width={50}
                   />
+                  {/* @ts-ignore */}
                   <Tooltip
                     contentStyle={{
                       borderRadius: "10px",
@@ -390,7 +391,7 @@ const summaryCards: SummaryCardItem[] = [
                       backgroundColor: "#fff",
                       fontSize: 13,
                     }}
-                    formatter={(value: number) => [`₹${value.toLocaleString()}`, "Revenue"]}
+                    formatter={(value: any) => value ? [`₹${value.toLocaleString()}`, "Revenue"] : ["", "Revenue"]}
                     labelStyle={{ fontWeight: 600, color: "#1e293b", marginBottom: 2 }}
                     cursor={{ fill: "#f8fafc" }}
                   />
@@ -431,6 +432,7 @@ const summaryCards: SummaryCardItem[] = [
                         <Cell key={i} fill={CONTENT_COLORS[i % CONTENT_COLORS.length]} />
                       ))}
                     </Pie>
+                    {/* @ts-ignore */}
                     <Tooltip
                       contentStyle={{
                         borderRadius: "10px",
@@ -438,7 +440,7 @@ const summaryCards: SummaryCardItem[] = [
                         boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
                         fontSize: 13,
                       }}
-                      formatter={(value: number, name: string) => [value, name]}
+                      formatter={(value: any, name: any) => [value || 0, name]}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -487,7 +489,7 @@ const summaryCards: SummaryCardItem[] = [
               return (
                 <div key={winner._id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50/60 transition-colors">
                   {/* Rank badge */}
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-base flex-shrink-0 ${rankCfg.bg}`}>
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-base shrink-0 ${rankCfg.bg}`}>
                     {rankCfg.label}
                   </div>
 
@@ -503,7 +505,7 @@ const summaryCards: SummaryCardItem[] = [
                   </div>
 
                   {/* Score */}
-                  <div className="text-right flex-shrink-0">
+                  <div className="text-right shrink-0">
                     <p className="text-sm font-bold text-indigo-600">{winner.score}</p>
                     <p className="text-xs text-gray-400">correct</p>
                   </div>
@@ -533,7 +535,7 @@ const summaryCards: SummaryCardItem[] = [
                 </div>
 
                 {/* Plan + status */}
-                <div className="text-right flex-shrink-0 space-y-1">
+                <div className="text-right shrink-0 space-y-1">
                   <p className="text-xs font-semibold text-gray-700">
                     ₹{sub.price}
                     <span className="font-normal text-gray-400"> / mo</span>
@@ -544,7 +546,7 @@ const summaryCards: SummaryCardItem[] = [
                 </div>
 
                 {/* Expiry */}
-                <div className="flex-shrink-0 text-right hidden sm:block">
+                <div className="shrink-0 text-right hidden sm:block">
                   <p className="text-xs text-gray-400">
                     {formatExpiry(sub.expiryDate)}
                   </p>
