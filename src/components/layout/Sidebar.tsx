@@ -117,15 +117,15 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         {/* Logo */}
         <div className="h-16 flex items-center justify-between gap-2.5 px-5 border-b border-gray-100 flex-shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center flex-shrink-0">
-              {/* <Image
+            {/* <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center flex-shrink-0"> */}
+              <Image
                 src="/assets/img/logo.png"
                 alt="Samarth"
                 width={20}
                 height={20}
                 className="object-contain"
-              /> */}
-            </div>
+              />
+            {/* </div> */}
             <span className="font-bold text-xl text-gray-900 tracking-tight">
               Samarth
             </span>

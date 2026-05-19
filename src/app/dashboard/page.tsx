@@ -14,180 +14,275 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { getConfig } from "@/store/slicer";
 import axiosInstance from "@/config/axiosInstance";
-import SummaryCard from "@/components/ui/SummaryCards";
-import { CustomDropdown } from "@/components/ui/Dropdown";
-import { useRouter } from "next/navigation";
+import { getConfig } from "@/store/slicer";
+import SummaryCards from "@/components/ui/SummaryCards";
 
+// ─── Types ─────────────────────────────────────────────────────────────────
 
-interface RevenueChartItem {
+interface MonthlyRevenue {
   month: string;
+  year: number;
   revenue: number;
-  jobs: number;
 }
 
-interface JobStatusChartItem {
-  status: string;
-  value: number;
+interface ContentBreakdown {
+  text: number;
+  quiz: number;
+  video: number;
 }
-
-interface RecentJob {
-  _id: string;
-  serviceName: string;
-  customerName: string;
-  providerName: string;
-  amount: number;
-  status: string;
-  createdAt: string;
-}
-
-interface MainStats {
-  totalRevenue: number;
-  totalJobs: number;
-  totalProviders: number;
-  totalCustomers: number;
-}
-
-interface DashboardCharts {
-  revenueChart: RevenueChartItem[];
-  jobStatusChart: JobStatusChartItem[];
-}
-
-interface DashboardData {
-  filterApplied: string;
-  mainStats: MainStats;
-  charts: DashboardCharts;
-  recentJobs: RecentJob[];
-}
-
 interface SummaryCardItem {
   label: string;
   value: string | number;
   icon: string;
 }
-
-interface FilterOption {
-  value: string;
-  label: string;
+interface Summary {
+  totalUsers: number;
+  totalContent: number;
+  totalQuizAttempts: number;
+  totalWinners: number;
+  totalRevenue: number;
 }
 
+interface TopWinner {
+  _id: string;
+  userId: string;
+  rank: number;
+  score: number;
+  weekNumber: number;
+  year: number;
+  cycleType: string;
+  userName: string;
+  profilePicture: string | null;
+}
 
-const DONUT_COLORS: string[] = ["#e05a00", "#F59E0B", "#10B981", "#6366F1", "#8B5CF6"];
+interface TopSubscriber {
+  _id: string;
+  userId: string;
+  planName: string;
+  price: number;
+  status: string;
+  startDate: string;
+  expiryDate: string;
+  userName: string;
+  profilePicture: string | null;
+  userEmail: string;
+}
 
-const filterOptions: FilterOption[] = [
-  { value: "thisMonth", label: "This Month" },
-  { value: "lastMonth", label: "Last Month" },
-  { value: "lastYear", label: "Last Year" },
-];
+interface DashboardData {
+  summary: Summary;
+  revenueStats: {
+    monthly: MonthlyRevenue[];
+    total: number;
+  };
+  contentStats: {
+    breakdown: ContentBreakdown;
+  };
+  topWinners: TopWinner[];
+  topSubscribers: TopSubscriber[];
+}
 
-const TABLE_COLUMNS = ["Service", "Customer", "Provider", "Amount", "Status", "Date"] as const;
+// ─── Constants ──────────────────────────────────────────────────────────────
 
+const CONTENT_COLORS = ["#6366F1", "#10B981", "#F59E0B"];
+const CONTENT_LABELS = { text: "Text", quiz: "Quiz", video: "Video" };
 
-const formatStatus = (status: string): string => {
-  switch (status) {
-    case "confirmed_by_user":
-      return "Confirmed";
-    case "pending":
-      return "Pending";
-    case "in_progress":
-      return "In Progress";
-    case "completed":
-      return "Completed";
-    case "cancelled":
-      return "Cancelled";
-    default:
-      return status;
-  }
+const RANK_CONFIG: Record<number, { bg: string; text: string; label: string }> = {
+  1: { bg: "bg-amber-50",   text: "text-amber-600",  label: "🥇" },
+  2: { bg: "bg-gray-100",   text: "text-gray-500",   label: "🥈" },
+  3: { bg: "bg-orange-50",  text: "text-orange-500", label: "🥉" },
 };
 
-const getStatusColor = (status: string): string => {
-  switch (status) {
-    case "confirmed_by_user":
-      return "bg-emerald-50 text-emerald-700";
-    case "pending":
-      return "bg-amber-50 text-amber-700";
-    case "in_progress":
-      return "bg-blue-50 text-blue-700";
-    case "completed":
-      return "bg-green-50 text-green-700";
-    case "cancelled":
-      return "bg-red-50 text-red-700";
-    default:
-      return "bg-gray-50 text-gray-700";
-  }
-};
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
-const formatDate = (dateString: string): string => {
-  const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", {
+const formatDate = (iso: string) =>
+  new Date(iso).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
   });
+
+const formatExpiry = (iso: string) => {
+  const diff = Math.ceil(
+    (new Date(iso).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+  );
+  if (diff < 0) return "Expired";
+  if (diff === 0) return "Expires today";
+  return `${diff}d left`;
 };
 
-// ─── Component ────────────────────────────────────────────────────────────────
+const getSubStatusStyle = (status: string) => {
+  switch (status) {
+    case "active":     return "bg-green-50 text-green-700";
+    case "trial":      return "bg-blue-50 text-blue-700";
+    case "expired":    return "bg-red-50 text-red-700";
+    case "cancelled":  return "bg-gray-100 text-gray-500";
+    default:           return "bg-gray-100 text-gray-500";
+  }
+};
+
+const initials = (name: string) =>
+  name
+    ?.split(" ")
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase() || "?";
+
+// ─── Sub-components ──────────────────────────────────────────────────────────
+
+function StatCard({
+  icon,
+  label,
+  value,
+  sub,
+  iconBg,
+  iconColor,
+}: {
+  icon: string;
+  label: string;
+  value: string | number;
+  sub?: string;
+  iconBg: string;
+  iconColor: string;
+}) {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4">
+      <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${iconBg}`}>
+        <Icon icon={icon} className={`w-6 h-6 ${iconColor}`} />
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">{label}</p>
+        <p className="text-2xl font-bold text-gray-900 mt-0.5 truncate">{value}</p>
+        {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
+      </div>
+    </div>
+  );
+}
+
+function Avatar({
+  src,
+  name,
+  size = "md",
+}: {
+  src: string | null;
+  name: string;
+  size?: "sm" | "md";
+}) {
+  const dim = size === "sm" ? "w-7 h-7 text-xs" : "w-9 h-9 text-sm";
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt={name}
+        className={`${dim} rounded-full object-cover flex-shrink-0`}
+      />
+    );
+  }
+  return (
+    <div
+      className={`${dim} rounded-full bg-indigo-100 text-indigo-700 font-semibold flex items-center justify-center flex-shrink-0`}
+    >
+      {initials(name)}
+    </div>
+  );
+}
+
+function SectionCard({
+  title,
+  icon,
+  children,
+  empty,
+  emptyText = "No data available",
+}: {
+  title: string;
+  icon: string;
+  children?: React.ReactNode;
+  empty?: boolean;
+  emptyText?: string;
+}) {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+        <Icon icon={icon} className="w-4 h-4 text-gray-400" />
+        <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+      </div>
+      {empty ? (
+        <div className="flex flex-col items-center justify-center py-12 text-gray-300">
+          <Icon icon="mdi:inbox-outline" className="w-10 h-10 mb-2" />
+          <p className="text-sm">{emptyText}</p>
+        </div>
+      ) : (
+        children
+      )}
+    </div>
+  );
+}
+
+// ─── Skeleton ────────────────────────────────────────────────────────────────
+
+function Skeleton() {
+  return (
+    <div className="min-h-screen bg-[#F8FAFC] p-4 lg:p-6 space-y-6">
+      <div className="flex justify-between">
+        <div className="h-9 w-52 bg-gray-200 rounded-lg animate-pulse" />
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="h-24 bg-white rounded-2xl animate-pulse" />
+        ))}
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 h-80 bg-white rounded-2xl animate-pulse" />
+        <div className="h-80 bg-white rounded-2xl animate-pulse" />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="h-64 bg-white rounded-2xl animate-pulse" />
+        <div className="h-64 bg-white rounded-2xl animate-pulse" />
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function DashboardOverview(): React.JSX.Element {
-  //  All hooks called at the top level - before any conditional returns
-  const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [filter, setFilter] = useState<string>("thisMonth");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
-    const fetchDashboardData = async (): Promise<void> => {
+    const fetchData = async () => {
       setLoading(true);
+      setError(false);
       try {
-        const response = await axiosInstance.get("/dashboard/stats", {
-          params: { period: filter },
-          ...getConfig(),
-        });
-        if (response.data.success) {
-          setData(response.data.data as DashboardData);
+        const res = await axiosInstance.get("/dashboard", getConfig());
+        if (res.data.success) {
+          setData(res.data.data as DashboardData);
+        } else {
+          setError(true);
         }
-      } catch (error) {
-        console.error("Failed to fetch dashboard data", error);
+      } catch {
+        setError(true);
       } finally {
         setLoading(false);
       }
     };
+    void fetchData();
+  }, []);
 
-    void fetchDashboardData();
-  }, [filter]);
+  if (loading) return <Skeleton />;
 
-  //  Now conditional returns are safe - hooks are already called
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#F8FAFC] p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8">
-        <div className="flex flex-col sm:flex-row sm:justify-between gap-3">
-          <div className="h-10 w-48 bg-gray-200 rounded-lg animate-pulse" />
-          <div className="h-10 w-full sm:w-36 bg-gray-200 rounded-xl animate-pulse" />
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-32 bg-white rounded-2xl animate-pulse" />
-          ))}
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
-          <div className="h-96 bg-white rounded-3xl animate-pulse" />
-          <div className="h-96 bg-white rounded-3xl animate-pulse" />
-        </div>
-        <div className="h-80 bg-white rounded-3xl animate-pulse" />
-      </div>
-    );
-  }
-
-  if (!data) {
+  if (error || !data) {
     return (
       <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
         <div className="text-center">
-          <Icon icon="mdi:alert-circle-outline" className="w-16 h-16 text-gray-400 mx-auto" />
-          <p className="mt-4 text-gray-600">Failed to load dashboard data</p>
+          <Icon icon="mdi:alert-circle-outline" className="w-16 h-16 text-gray-300 mx-auto" />
+          <p className="mt-4 text-gray-500 font-medium">Failed to load dashboard</p>
           <button
             onClick={() => window.location.reload()}
-            className="mt-4 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+            className="mt-4 px-5 py-2 bg-indigo-600 text-white text-sm rounded-xl hover:bg-indigo-700 transition-colors"
+            type="button"
           >
             Retry
           </button>
@@ -196,331 +291,270 @@ export default function DashboardOverview(): React.JSX.Element {
     );
   }
 
-  // ── Derived data ──────────────────────────────────────────────────────────
+  const { summary, revenueStats, contentStats, topWinners, topSubscribers } = data;
 
-  const { mainStats, charts, recentJobs } = data;
+  // Content donut data
+  const contentDonutData = [
+    { name: "Text",  value: contentStats.breakdown.text  },
+    { name: "Quiz",  value: contentStats.breakdown.quiz  },
+    { name: "Video", value: contentStats.breakdown.video },
+  ].filter((d) => d.value > 0);
 
-  const summaryCards: SummaryCardItem[] = [
-    {
-      label: "Total Revenue",
-      value: `${mainStats.totalRevenue.toLocaleString()}`,
-      icon: "mdi:currency-bdt",
-    },
-    {
-      label: "Total Jobs",
-      value: mainStats.totalJobs,
-      icon: "mdi:briefcase-outline",
-    },
-    {
-      label: "Active Providers",
-      value: mainStats.totalProviders,
-      icon: "mdi:account-hard-hat",
-    },
-    {
-      label: "Total Customers",
-      value: mainStats.totalCustomers,
-      icon: "mdi:account-group-outline",
-    },
-  ];
+  const totalContent = contentStats.breakdown.text + contentStats.breakdown.quiz + contentStats.breakdown.video;
 
-  // Ensure chart has minimum dimensions to prevent Recharts warning
-  const hasRevenueData = charts.revenueChart && charts.revenueChart.length > 0;
-  const hasJobStatusData = charts.jobStatusChart && charts.jobStatusChart.length > 0;
+  // Revenue chart — only show months with label
+  const revenueChartData = revenueStats.monthly.map((m) => ({
+    label: m.month,
+    revenue: m.revenue,
+  }));
 
-  // ── Render ────────────────────────────────────────────────────────────────
-
+const summaryCards: SummaryCardItem[] = [
+  {
+    label: "Total Users",
+    value: `${summary.totalUsers.toLocaleString()}`,
+    icon: "mdi:account-group-outline",
+  },
+  {
+    label: "Total Content",
+    value: summary.totalContent,
+    icon: "mdi:file-document-outline",
+  },
+  {
+    label: "Total Winners",
+    value: summary.totalWinners,
+    icon: "mdi:trophy-outline",
+  },
+  {
+    label: "Total Revenue",
+    value: summary.totalRevenue,
+    icon: "mdi:currency-usd",
+  },
+];
   return (
-    <div className="min-h-screen bg-[#F8FAFC] p-4  lg:p-6 space-y-6 sm:space-y-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">
-            Dashboard Overview
-          </h1>
-          <p className="text-xs sm:text-sm text-gray-500 mt-1">
-            Monitor platform performance and growth
-          </p>
-        </div>
-        <div className="w-full sm:w-52 flex-shrink-0">
-          <CustomDropdown
-            icon="mdi:filter-variant"
-            placeholder="Select Period"
-            options={filterOptions}
-            value={filter}
-            onChange={(val: any) => setFilter(val)}
-          />
-        </div>
+    <div className="min-h-screen bg-[#F8FAFC] p-4 lg:p-6 space-y-6">
+
+      {/* ── Header ── */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
+        <p className="text-sm text-gray-400 mt-0.5">Platform overview at a glance</p>
       </div>
 
-      {/* Summary Cards */}
-      <SummaryCard data={summaryCards as any} />
+         <SummaryCards data={summaryCards as any} />
 
-      {/* Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
-        {/* Revenue Bar Chart */}
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 sm:mb-6">
+
+      {/* ── Charts Row ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        {/* Revenue Line/Bar Chart */}
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center justify-between mb-5">
             <div>
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900">
-                Revenue Overview
-              </h3>
-              <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
-                Monthly revenue performance
-              </p>
+              <h3 className="text-sm font-semibold text-gray-900">Revenue Overview</h3>
+              <p className="text-xs text-gray-400 mt-0.5">Monthly subscription revenue (last 12 months)</p>
             </div>
-            <div className="flex items-center gap-1.5 text-xs font-medium flex-shrink-0">
-              <span
-                className="w-3 h-3 rounded-full flex-shrink-0"
-                style={{ backgroundColor: "#e05a00" }}
-              />
-              <span className="text-gray-600">Revenue (BDT)</span>
+            <div className="flex items-center gap-1.5 text-xs text-gray-500">
+              <span className="w-2.5 h-2.5 rounded-sm bg-indigo-500 inline-block" />
+              Revenue (₹)
             </div>
           </div>
 
-          {!hasRevenueData ? (
-            <div className="flex items-center justify-center h-64 sm:h-80 text-gray-400">
-              No revenue data available
+          {revenueStats.monthly.every((m) => m.revenue === 0) ? (
+            <div className="flex items-center justify-center h-60 text-gray-300 text-sm">
+              No revenue data yet
             </div>
           ) : (
-            <div className="h-64 sm:h-80 w-full">
+            <div className="h-60">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={charts.revenueChart}
-                  margin={{ top: 10, right: 4, left: 0, bottom: 10 }}
-                >
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    vertical={false}
-                    stroke="#e2e8f0"
-                  />
+                <BarChart data={revenueChartData} margin={{ top: 4, right: 4, left: -10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                   <XAxis
-                    dataKey="month"
+                    dataKey="label"
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fill: "#64748b", fontSize: 11 }}
-                    dy={10}
+                    tick={{ fill: "#94a3b8", fontSize: 11 }}
+                    dy={8}
                   />
                   <YAxis
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fill: "#64748b", fontSize: 11 }}
-                    tickFormatter={(value: number) => String(value)}
-                    width={45}
+                    tick={{ fill: "#94a3b8", fontSize: 11 }}
+                    tickFormatter={(v: number) => v === 0 ? "0" : `₹${v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v}`}
+                    width={50}
                   />
                   <Tooltip
                     contentStyle={{
-                      borderRadius: "12px",
+                      borderRadius: "10px",
                       border: "1px solid #e2e8f0",
-                      boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
                       padding: "8px 12px",
                       backgroundColor: "#fff",
+                      fontSize: 13,
                     }}
-                    formatter={(value: any) => [`BDT ${value}`, "Revenue"]}
-                    labelStyle={{ fontWeight: 600, marginBottom: 4 }}
+                    formatter={(value: number) => [`₹${value.toLocaleString()}`, "Revenue"]}
+                    labelStyle={{ fontWeight: 600, color: "#1e293b", marginBottom: 2 }}
+                    cursor={{ fill: "#f8fafc" }}
                   />
-                  <Bar
-                    dataKey="revenue"
-                    fill="#e05a00"
-                    radius={[8, 8, 0, 0]}
-                    barSize={32}
-                    name="Revenue"
-                  />
+                  <Bar dataKey="revenue" fill="#6366F1" radius={[6, 6, 0, 0]} barSize={28} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           )}
         </div>
 
-        {/* Job Status Donut Chart */}
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-4 sm:p-6">
-          <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1">
-            Job Status Distribution
-          </h3>
-          <p className="text-xs sm:text-sm text-gray-500 mb-5 sm:mb-6">
-            Current job status breakdown
-          </p>
-          <div className="h-56 sm:h-72 w-full relative">
-            {!hasJobStatusData ? (
-              <div className="flex items-center justify-center h-full text-gray-400">
-                No job status data available
-              </div>
-            ) : (
-              <>
+        {/* Content Donut Chart */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="mb-5">
+            <h3 className="text-sm font-semibold text-gray-900">Content Breakdown</h3>
+            <p className="text-xs text-gray-400 mt-0.5">By content type</p>
+          </div>
+
+          {totalContent === 0 ? (
+            <div className="flex items-center justify-center h-52 text-gray-300 text-sm">
+              No content yet
+            </div>
+          ) : (
+            <>
+              <div className="relative h-52">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={charts.jobStatusChart}
+                      data={contentDonutData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={55}
+                      innerRadius={58}
                       outerRadius={80}
-                      paddingAngle={4}
+                      paddingAngle={3}
                       dataKey="value"
-                      nameKey="status"
                       stroke="none"
                     >
-                      {charts.jobStatusChart.map((entry: JobStatusChartItem, index: number) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={DONUT_COLORS[index % DONUT_COLORS.length]}
-                        />
+                      {contentDonutData.map((_, i) => (
+                        <Cell key={i} fill={CONTENT_COLORS[i % CONTENT_COLORS.length]} />
                       ))}
                     </Pie>
                     <Tooltip
                       contentStyle={{
-                        borderRadius: "12px",
-                        border: "none",
-                        boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                        borderRadius: "10px",
+                        border: "1px solid #e2e8f0",
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+                        fontSize: 13,
                       }}
-                      formatter={(value: any, name: any) => [value, formatStatus(name)]}
+                      formatter={(value: number, name: string) => [value, name]}
                     />
                   </PieChart>
                 </ResponsiveContainer>
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
-                  <p className="text-xl sm:text-2xl font-bold text-gray-900">
-                    {mainStats.totalJobs}
-                  </p>
-                  <p className="text-xs text-gray-500 font-medium">Total Jobs</p>
+                {/* Center label */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <p className="text-2xl font-bold text-gray-900">{totalContent}</p>
+                  <p className="text-xs text-gray-400">Total</p>
                 </div>
-              </>
-            )}
-          </div>
-          {hasJobStatusData && (
-            <div className="flex flex-wrap justify-center gap-4 sm:gap-6 mt-3 pt-2">
-              {charts.jobStatusChart.map((item: JobStatusChartItem, index: number) => (
-                <div key={item.status} className="flex items-center gap-2">
-                  <div
-                    className="w-3 h-3 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: DONUT_COLORS[index % DONUT_COLORS.length] }}
-                  />
-                  <span className="text-xs sm:text-sm text-gray-600 capitalize">
-                    {formatStatus(item.status)}
-                  </span>
-                  <span className="text-xs sm:text-sm font-semibold text-gray-900">
-                    {item.value}
-                  </span>
-                </div>
-              ))}
-            </div>
+              </div>
+
+              {/* Legend */}
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                {contentDonutData.map((item, i) => (
+                  <div key={item.name} className="flex flex-col items-center gap-1">
+                    <div
+                      className="w-2.5 h-2.5 rounded-sm"
+                      style={{ backgroundColor: CONTENT_COLORS[i] }}
+                    />
+                    <span className="text-xs text-gray-500">{item.name}</span>
+                    <span className="text-sm font-semibold text-gray-900">{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
       </div>
 
-      {/* Recent Jobs Table */}
-      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Icon icon="mdi:history" className="w-5 h-5 text-gray-500 flex-shrink-0" />
-            <h3 className="text-base sm:text-lg font-semibold text-gray-900">Recent Jobs</h3>
+      {/* ── Tables Row ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        {/* Top Winners */}
+        <SectionCard
+          title="Top Winners — Latest Week"
+          icon="mdi:trophy-outline"
+          empty={topWinners.length === 0}
+          emptyText="No winners announced yet"
+        >
+          <div className="divide-y divide-gray-50">
+            {topWinners.map((winner) => {
+              const rankCfg = RANK_CONFIG[winner.rank] ?? {
+                bg: "bg-gray-100",
+                text: "text-gray-500",
+                label: `#${winner.rank}`,
+              };
+              return (
+                <div key={winner._id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50/60 transition-colors">
+                  {/* Rank badge */}
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-base flex-shrink-0 ${rankCfg.bg}`}>
+                    {rankCfg.label}
+                  </div>
+
+                  {/* Avatar */}
+                  <Avatar src={winner.profilePicture} name={winner.userName} />
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{winner.userName}</p>
+                    <p className="text-xs text-gray-400">
+                      Week {winner.weekNumber} · {winner.year}
+                    </p>
+                  </div>
+
+                  {/* Score */}
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-sm font-bold text-indigo-600">{winner.score}</p>
+                    <p className="text-xs text-gray-400">correct</p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-          <button
-            onClick={() => router.push("/dashboard/jobs")}
-            className="text-sm font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1 self-start sm:self-auto"
-            type="button"
-          >
-            <span>View All</span>
-            <Icon icon="mdi:arrow-right" className="w-4 h-4" />
-          </button>
-        </div>
+        </SectionCard>
 
-        <div className="overflow-x-auto">
-          {recentJobs.length === 0 ? (
-            <div className="py-12 text-center text-gray-400">
-              <Icon icon="mdi:inbox-outline" className="w-12 h-12 mx-auto mb-2 opacity-50" />
-              <p>No recent jobs found</p>
-            </div>
-          ) : (
-            <table className="w-full min-w-[640px]">
-              <thead className="bg-gray-50/80">
-                <tr>
-                  {TABLE_COLUMNS.map((col) => (
-                    <th
-                      key={col}
-                      className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap"
-                    >
-                      {col}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {recentJobs.map((job: RecentJob) => (
-                  <tr key={job._id} className="hover:bg-gray-50/50 transition-colors">
-                    {/* Service */}
-                    <td className="px-4 sm:px-6 py-3 sm:py-4">
-                      <div className="flex items-center gap-2">
-                        <Icon
-                          icon="mdi:briefcase-outline"
-                          className="w-4 h-4 text-gray-400 flex-shrink-0"
-                        />
-                        <span className="text-sm font-medium text-gray-900 whitespace-nowrap">
-                          {job.serviceName}
-                        </span>
-                      </div>
-                    </td>
+        {/* Top Subscribers */}
+        <SectionCard
+          title="Recent Subscribers"
+          icon="mdi:star-circle-outline"
+          empty={topSubscribers.length === 0}
+          emptyText="No subscribers yet"
+        >
+          <div className="divide-y divide-gray-50">
+            {topSubscribers.map((sub) => (
+              <div key={sub._id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50/60 transition-colors">
+                {/* Avatar */}
+                <Avatar src={sub.profilePicture} name={sub.userName} />
 
-                    {/* Customer */}
-                    <td className="px-4 sm:px-6 py-3 sm:py-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                          <span className="text-xs font-medium text-blue-700">
-                            {job.customerName?.charAt(0) || "?"}
-                          </span>
-                        </div>
-                        <span className="text-sm text-gray-700 whitespace-nowrap">
-                          {job.customerName}
-                        </span>
-                      </div>
-                    </td>
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{sub.userName}</p>
+                  <p className="text-xs text-gray-400 truncate">{sub.userEmail}</p>
+                </div>
 
-                    {/* Provider */}
-                    <td className="px-4 sm:px-6 py-3 sm:py-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                          <span className="text-xs font-medium text-emerald-700">
-                            {job.providerName?.charAt(0) || "?"}
-                          </span>
-                        </div>
-                        <span className="text-sm text-gray-700 whitespace-nowrap">
-                          {job.providerName}
-                        </span>
-                      </div>
-                    </td>
+                {/* Plan + status */}
+                <div className="text-right flex-shrink-0 space-y-1">
+                  <p className="text-xs font-semibold text-gray-700">
+                    ₹{sub.price}
+                    <span className="font-normal text-gray-400"> / mo</span>
+                  </p>
+                  <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium capitalize ${getSubStatusStyle(sub.status)}`}>
+                    {sub.status}
+                  </span>
+                </div>
 
-                    {/* Amount */}
-                    <td className="px-4 sm:px-6 py-3 sm:py-4">
-                      <span className="text-sm font-semibold text-gray-900 whitespace-nowrap">
-                        BDT {job.amount}
-                      </span>
-                    </td>
+                {/* Expiry */}
+                <div className="flex-shrink-0 text-right hidden sm:block">
+                  <p className="text-xs text-gray-400">
+                    {formatExpiry(sub.expiryDate)}
+                  </p>
+                  <p className="text-xs text-gray-300">{formatDate(sub.startDate)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
 
-                    {/* Status */}
-                    <td className="px-4 sm:px-6 py-3 sm:py-4">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium capitalize whitespace-nowrap ${getStatusColor(job.status)}`}
-                      >
-                        {formatStatus(job.status)}
-                      </span>
-                    </td>
-
-                    {/* Date */}
-                    <td className="px-4 sm:px-6 py-3 sm:py-4">
-                      <div className="flex items-center gap-1.5">
-                        <Icon
-                          icon="mdi:calendar-outline"
-                          className="w-3.5 h-3.5 text-gray-400 flex-shrink-0"
-                        />
-                        <span className="text-sm text-gray-500 whitespace-nowrap">
-                          {formatDate(job.createdAt)}
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
       </div>
     </div>
   );
