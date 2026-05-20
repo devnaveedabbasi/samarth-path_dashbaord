@@ -233,10 +233,6 @@ export default function QuizManagementPage() {
             className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-200">
             <Icon icon="mdi:pencil-outline" className="w-4 h-4" />
           </Link>
-          <Link href={`/dashboard/quiz/results/${item._id}`} title="View Results"
-            className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-transparent hover:border-indigo-200">
-            <Icon icon="mdi:chart-box-outline" className="w-4 h-4" />
-          </Link>
           <button onClick={() => setDeleteTarget(item)} title="Delete"
             className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-200">
             <Icon icon="mdi:trash-can-outline" className="w-4 h-4" />
