@@ -12,7 +12,7 @@ import { getConfig } from "@/store/slicer";
 import Button from "@/components/ui/Button";
 
 const schema = Yup.object({
-  title: Yup.string().min(2, "Min 2 characters").max(100, "Max 100 characters").required("Title is required"),
+  title: Yup.string().min(2, "Min 2 characters").max(200, "Max 200 characters").required("Title is required"),
   label: Yup.string().min(2, "Min 2 characters").max(50, "Max 50 characters").required("Label is required"),
   scheduledDate: Yup.string().required("Publish date is required"),
   description: Yup.string().min(10, "Min 10 characters").max(1000, "Max 1000 characters").required("Description is required"),
@@ -35,6 +35,7 @@ export default function AddTextPage() {
     resolver: yupResolver(schema),
     defaultValues: {
       scheduledDate: new Date().toISOString().split("T")[0],
+      title: "Daily Morning",
     },
   });
 
@@ -53,6 +54,9 @@ export default function AddTextPage() {
     setImagePreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
+
+  const inputStyle = (hasError: boolean) =>
+    `w-full h-11 px-4 rounded-xl border outline-none transition-all focus:ring-2 focus:ring-primary-500 ${hasError ? "border-red-400 bg-red-50" : "border-gray-200"}`;
 
   const onSubmit = async (values: FormValues) => {
     setLoading(true);
@@ -110,9 +114,9 @@ export default function AddTextPage() {
               <input
                 type="text"
                 {...register("title")}
+                disabled={true}
                 placeholder="Enter title (e.g., Daily Morning Update)"
-                className={`w-full h-11 px-4 rounded-xl border outline-none transition-all focus:ring-2 focus:ring-primary-500 ${errors.title ? "border-red-400 bg-red-50" : "border-gray-200"}`}
-              />
+                className={`${inputStyle(!!errors.title)} opacity-60 cursor-not-allowed bg-gray-100 text-gray-500`} />
               <ErrorMsg msg={errors.title?.message} />
             </div>
 

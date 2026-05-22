@@ -12,7 +12,7 @@ import { getConfig } from "@/store/slicer";
 import Button from "@/components/ui/Button";
 
 const schema = Yup.object({
-  title: Yup.string().min(2, "Min 2 characters").max(100, "Max 100 characters").required("Title is required"),
+  title: Yup.string().min(2, "Min 2 characters").max(200, "Max 200 characters").required("Title is required"),
   question: Yup.string().min(10, "Min 10 characters").max(500, "Max 500 characters").required("Question is required"),
   option1: Yup.string().min(1, "Required").max(200, "Max 200 characters").required("Option 1 is required"),
   option2: Yup.string().min(1, "Required").max(200, "Max 200 characters").required("Option 2 is required"),
@@ -121,9 +121,9 @@ export default function AddQuizPage() {
               <input
                 type="text"
                 {...register("title")}
+                disabled={true}
                 placeholder="e.g., Daily GK Quiz"
-                className={inputStyle(!!errors.title)}
-              />
+                className={`${inputStyle(!!errors.title)} opacity-60 cursor-not-allowed bg-gray-100 text-gray-500`} />
               <ErrorMsg msg={errors.title?.message} />
             </div>
 
