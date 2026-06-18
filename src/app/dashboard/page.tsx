@@ -88,9 +88,9 @@ const CONTENT_COLORS = ["#6366F1", "#10B981", "#F59E0B"];
 const CONTENT_LABELS = { text: "Text", quiz: "Quiz", video: "Video" };
 
 const RANK_CONFIG: Record<number, { bg: string; text: string; label: string }> = {
-  1: { bg: "bg-amber-50",   text: "text-amber-600",  label: "🥇" },
-  2: { bg: "bg-gray-100",   text: "text-gray-500",   label: "🥈" },
-  3: { bg: "bg-orange-50",  text: "text-orange-500", label: "🥉" },
+  1: { bg: "bg-amber-50", text: "text-amber-600", label: "🥇" },
+  2: { bg: "bg-gray-100", text: "text-gray-500", label: "🥈" },
+  3: { bg: "bg-orange-50", text: "text-orange-500", label: "🥉" },
 };
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -113,11 +113,11 @@ const formatExpiry = (iso: string) => {
 
 const getSubStatusStyle = (status: string) => {
   switch (status) {
-    case "active":     return "bg-green-50 text-green-700";
-    case "trial":      return "bg-blue-50 text-blue-700";
-    case "expired":    return "bg-red-50 text-red-700";
-    case "cancelled":  return "bg-gray-100 text-gray-500";
-    default:           return "bg-gray-100 text-gray-500";
+    case "active": return "bg-green-50 text-green-700";
+    case "trial": return "bg-blue-50 text-blue-700";
+    case "expired": return "bg-red-50 text-red-700";
+    case "cancelled": return "bg-gray-100 text-gray-500";
+    default: return "bg-gray-100 text-gray-500";
   }
 };
 
@@ -295,8 +295,8 @@ export default function DashboardOverview(): React.JSX.Element {
 
   // Content donut data
   const contentDonutData = [
-    { name: "Text",  value: contentStats.breakdown.text  },
-    { name: "Quiz",  value: contentStats.breakdown.quiz  },
+    { name: "Text", value: contentStats.breakdown.text },
+    { name: "Quiz", value: contentStats.breakdown.quiz },
     { name: "Video", value: contentStats.breakdown.video },
   ].filter((d) => d.value > 0);
 
@@ -308,28 +308,28 @@ export default function DashboardOverview(): React.JSX.Element {
     revenue: m.revenue,
   }));
 
-const summaryCards: SummaryCardItem[] = [
-  {
-    label: "Total Users",
-    value: `${summary.totalUsers.toLocaleString()}`,
-    icon: "mdi:account-group-outline",
-  },
-  {
-    label: "Total Content",
-    value: summary.totalContent,
-    icon: "mdi:file-document-outline",
-  },
-  {
-    label: "Total Winners",
-    value: summary.totalWinners,
-    icon: "mdi:trophy-outline",
-  },
-  {
-    label: "Total Revenue",
-    value: summary.totalRevenue,
-    icon: "mdi:currency-usd",
-  },
-];
+  const summaryCards: SummaryCardItem[] = [
+    {
+      label: "Total Users",
+      value: `${summary?.totalUsers.toLocaleString()}`,
+      icon: "mdi:account-group-outline",
+    },
+    {
+      label: "Total Content",
+      value: summary?.totalContent,
+      icon: "mdi:file-document-outline",
+    },
+    {
+      label: "Total Winners",
+      value: summary?.totalWinners,
+      icon: "mdi:trophy-outline",
+    },
+    {
+      label: "Total Revenue",
+      value: summary?.totalRevenue,
+      icon: "mdi:currency-usd",
+    },
+  ];
   return (
     <div className="min-h-screen bg-[#F8FAFC] p-4 lg:p-6 space-y-6">
 
@@ -339,7 +339,7 @@ const summaryCards: SummaryCardItem[] = [
         <p className="text-sm text-gray-400 mt-0.5">Platform overview at a glance</p>
       </div>
 
-         <SummaryCards data={summaryCards as any} />
+      <SummaryCards data={summaryCards as any} />
 
 
       {/* ── Charts Row ── */}

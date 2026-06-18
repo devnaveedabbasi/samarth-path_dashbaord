@@ -21,17 +21,16 @@ export default function SummaryCards({ data = [] }: SummaryCardsProps) {
       {data?.map((item, index) => (
         <div
           key={index}
-          className="bg-white p-4 sm:p-5 lg:p-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-200"
+          className="bg-white  p-4 sm:p-5 lg:p-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-200"
         >
           <p className="text-xs sm:text-sm  text-gray-500 mb-3 sm:mb-4">
             {item.label}
           </p>
 
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-primary-600 break-words">
+          <div className="flex items-center  justify-between gap-3">
+            <p className="flex-1 min-w-0 text-2xl sm:text-3xl lg:text-4xl font-bold text-primary-600  break-all">
               {item.value}
             </p>
-
             <div className="bg-primary-100 p-2 sm:p-3 rounded-full shrink-0">
               <Icon
                 icon={item.icon}
