@@ -189,9 +189,9 @@ export default function WinnersManagement() {
       label: "Average Accuracy",
       value: data.leaderboard?.length
         ? `${Math.round(
-            data.leaderboard.reduce((acc, curr) => acc + curr.stats.accuracy, 0) /
-              data.leaderboard.length
-          )}%`
+          data.leaderboard.reduce((acc, curr) => acc + curr.stats.accuracy, 0) /
+          data.leaderboard.length
+        )}%`
         : "0%",
       icon: "mdi:chart-line",
       color: "blue",
@@ -472,11 +472,10 @@ export default function WinnersManagement() {
         <div className="flex gap-2 bg-gray-100 p-1 rounded-xl">
           <button
             onClick={() => setActiveTab("daily")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeTab === "daily"
-                ? "bg-white text-primary-600 shadow-sm"
-                : "text-gray-600 hover:text-gray-900"
-            }`}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === "daily"
+              ? "bg-white text-primary-600 shadow-sm"
+              : "text-gray-600 hover:text-gray-900"
+              }`}
           >
             <div className="flex items-center gap-2">
               <Icon icon="mdi:calendar-today" className="w-4 h-4" />
@@ -485,11 +484,10 @@ export default function WinnersManagement() {
           </button>
           <button
             onClick={() => setActiveTab("weekly")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeTab === "weekly"
-                ? "bg-white text-primary-600 shadow-sm"
-                : "text-gray-600 hover:text-gray-900"
-            }`}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === "weekly"
+              ? "bg-white text-primary-600 shadow-sm"
+              : "text-gray-600 hover:text-gray-900"
+              }`}
           >
             <div className="flex items-center gap-2">
               <Icon icon="mdi:calendar-week" className="w-4 h-4" />
@@ -632,8 +630,8 @@ export default function WinnersManagement() {
           )}
         </div>
         <DataTable
-          data={filteredLeaderboard || []}
-          columns={leaderboardColumns}
+          data={(filteredLeaderboard || []) as any}
+          columns={(leaderboardColumns || []) as any}
           loading={loading}
           emptyIcon="mdi:account-off"
           emptyTitle="No participants yet"
