@@ -37,6 +37,7 @@ interface User {
   isPhoneVerified?: boolean;
   isSubscribed?: boolean;
   subscriptionID?: Subscription | null;
+  address?: string;
   createdAt: string;
   updatedAt?: string;
 }
@@ -224,6 +225,7 @@ function UserDetailModal({ userId, onClose, onStatusChange }: {
     }
   };
 
+  console.log("User Detail Modal Render", { userId, user, fetching, updating });
   if (fetching) {
     return (
       <div className="flex flex-col items-center justify-center py-12 gap-3">
@@ -288,10 +290,14 @@ function UserDetailModal({ userId, onClose, onStatusChange }: {
             {user.subscriptionID.startDate && <div><p className="text-xs text-primary-500 mb-0.5">Start</p><p className="font-semibold text-primary-800">{new Date(user.subscriptionID.startDate).toLocaleDateString("en-GB")}</p></div>}
             {user.subscriptionID.endDate && <div><p className="text-xs text-primary-500 mb-0.5">Expires</p><p className="font-semibold text-primary-800">{new Date(user.subscriptionID.endDate).toLocaleDateString("en-GB")}</p></div>}
           </div>
+
         </div>
+
       )}
+      <DetailRow label="Address" value={user.address || "N/A"} icon="mdi:home-outline" />
 
       <div className="pt-2">
+
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Change Status</p>
         <div className="flex items-center gap-2">
           <div className="flex-1">
