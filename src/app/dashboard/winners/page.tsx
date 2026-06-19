@@ -133,8 +133,8 @@ export default function WinnersManagement() {
     try {
       const endpoint =
         activeTab === "daily"
-          ? `/admin/winners/select/daily/${userId}`
-          : `/admin/winners/select/weekly/${userId}`;
+          ? `/winners/select/daily/${userId}`
+          : `/winners/select/weekly/${userId}`;
 
       const response = await axiosInstance.post(endpoint);
       const result = response.data;
@@ -261,11 +261,11 @@ export default function WinnersManagement() {
           <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
             <div
               className="h-full bg-primary-600 rounded-full transition-all"
-              style={{ width: `${item.stats.accuracy}%` }}
+              style={{ width: `${item.stats.accuracy.toFixed(2)}%` }}
             />
           </div>
           <span className="text-sm font-medium">
-            {item.stats.accuracy}%
+            {item.stats.accuracy.toFixed(2)}%
           </span>
         </div>
       ),
