@@ -1,7 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // ✅ Correct: at the root level
-  allowedDevOrigins: ['192.168.1.9', '*.192.168.1.9', 'http://192.168.1.9:3000'],
+  allowedDevOrigins: ['192.168.1.9', '*.192.168.1.9'],
 
   async rewrites() {
     return [

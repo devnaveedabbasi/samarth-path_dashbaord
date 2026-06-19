@@ -289,7 +289,7 @@ export default function WinnersManagement() {
         return (
           <Button
             variant={isAlreadyWinner ? "secondary" : "primary"}
-            className="!w-auto px-3 py-1.5 text-xs"
+            className="w-auto! px-3 py-1.5 text-xs"
             disabled={isDisabled}
             onClick={() => {
               setSelectedUserId(item.userId);
@@ -381,7 +381,7 @@ export default function WinnersManagement() {
     const user = data.leaderboard?.find((u) => u.userId === selectedUserId);
 
     return (
-      <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm">
         <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl relative z-[100000]">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xl font-bold text-gray-900">
@@ -435,14 +435,14 @@ export default function WinnersManagement() {
           <div className="flex gap-3">
             <Button
               variant="secondary"
-              className="!w-full"
+              className="w-full!"
               onClick={() => setShowWinnerModal(false)}
             >
               Cancel
             </Button>
             <Button
               variant="primary"
-              className="!w-full"
+              className="w-full!"
               loading={selectingWinner}
               onClick={() => handleSelectWinner(selectedUserId)}
             >
