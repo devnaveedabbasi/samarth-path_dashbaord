@@ -124,14 +124,14 @@ export default function SetNewPasswordPage() {
       {/* Right Panel */}
       <div className="flex-1 flex rounded-l-4xl bg-[#FFF6F0] items-center justify-center p-10 lg:p-20 overflow-auto">
         <div className="w-full max-w-md">
-          <div className="flex lg:hidden justify-center mb-8">
+          {/* <div className="flex lg:hidden justify-center mb-8">
             <div className="flex flex-col items-center">
               <div className="w-14 h-14 bg-primary-600 rounded-2xl flex items-center justify-center shadow-md">
                 <span className="text-white font-bold text-3xl">KJ</span>
               </div>
               <p className="text-primary-700 font-semibold mt-1.5 text-sm tracking-widest">KAJNOW</p>
             </div>
-          </div>
+          </div> */}
 
           <div className="flex flex-col space-y-4">
             <div className="text-center mb-8">
