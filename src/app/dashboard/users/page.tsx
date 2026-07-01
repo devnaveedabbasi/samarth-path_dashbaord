@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { Icon } from "@iconify/react";
 import axiosInstance from "@/config/axiosInstance";
@@ -148,9 +149,10 @@ interface ActionCellProps {
   user: User;
   onStatusChange: (userId: string, status: string) => Promise<void>;
   onViewDetails: (userId: string) => void;
+  onGrantSubscription: (userId: string) => void;
 }
 
-const ActionCell = React.memo(function ActionCell({ user, onStatusChange, onViewDetails }: ActionCellProps) {
+const ActionCell = React.memo(function ActionCell({ user, onStatusChange, onViewDetails, onGrantSubscription }: ActionCellProps) {
   const [busy, setBusy] = useState(false);
 
   const handleStatus = useCallback(async (val: string | number) => {
@@ -172,6 +174,14 @@ const ActionCell = React.memo(function ActionCell({ user, onStatusChange, onView
         className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 border border-transparent hover:border-primary-200 transition-all shrink-0"
       >
         <Icon icon="mdi:eye-outline" className="w-4 h-4" />
+      </button>
+
+      <button
+        onClick={() => onGrantSubscription(user._id)}
+        title="Grant Subscription"
+        className="p-1.5 rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 border border-transparent hover:border-amber-200 transition-all shrink-0"
+      >
+        <Icon icon="mdi:crown-outline" className="w-4 h-4" />
       </button>
 
       <div className="flex items-center gap-1 min-w-[160px]">
@@ -316,9 +326,134 @@ function UserDetailModal({ userId, onClose, onStatusChange }: {
   );
 }
 
+// ─── Grant Subscription Modal ───────────────────────────────────────────────
+
+const PLAN_OPTIONS = [{ value: "Monthly Basic", label: "Monthly Basic — ₹199" }];
+
+function GrantSubscriptionModal({ userId, onClose, onGranted }: {
+  userId: string;
+  onClose: () => void;
+  onGranted: () => void;
+}) {
+  const [planName, setPlanName] = useState("Monthly Basic");
+  const [price, setPrice] = useState("199");
+  const [durationDays, setDurationDays] = useState("30");
+  const [startDate, setStartDate] = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
+  const [notes, setNotes] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const payload: Record<string, unknown> = {
+        planName,
+        price: Number(price) || 0,
+        durationDays: Number(durationDays) || 30,
+        notes: notes.trim() || undefined,
+      };
+      if (startDate) payload.startDate = startDate;
+      if (expiryDate) payload.expiryDate = expiryDate;
+
+      const res = await axiosInstance.post(`/users/${userId}/grant-subscription`, payload, getConfig());
+      if (res.data.success) {
+        toast.success("Subscription granted successfully");
+        onGranted();
+        onClose();
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message ?? "Failed to grant subscription");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-5">
+      <div>
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Plan</p>
+        <CustomDropdown
+          icon="mdi:crown-outline"
+          options={PLAN_OPTIONS}
+          value={planName}
+          onChange={(val) => setPlanName(String(val))}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-sm font-semibold text-gray-700">Price (₹)</label>
+          <input
+            type="number"
+            min={0}
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            className="w-full mt-1.5 h-11 px-4 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-primary-500"
+          />
+        </div>
+        <div>
+          <label className="text-sm font-semibold text-gray-700">Duration (Days)</label>
+          <input
+            type="number"
+            min={1}
+            value={durationDays}
+            onChange={(e) => setDurationDays(e.target.value)}
+            disabled={!!expiryDate}
+            className="w-full mt-1.5 h-11 px-4 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-sm font-semibold text-gray-700">Start Date (optional)</label>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="w-full mt-1.5 h-11 px-4 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-primary-500"
+          />
+        </div>
+        <div>
+          <label className="text-sm font-semibold text-gray-700">Expiry Date (optional)</label>
+          <input
+            type="date"
+            value={expiryDate}
+            onChange={(e) => setExpiryDate(e.target.value)}
+            className="w-full mt-1.5 h-11 px-4 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-primary-500"
+          />
+        </div>
+      </div>
+
+      {/* <div>
+        <label className="text-sm font-semibold text-gray-700">Notes (optional)</label>
+        <textarea
+          rows={3}
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Reason for manual grant..."
+          className="w-full mt-1.5 p-4 rounded-xl border border-gray-200 outline-none resize-none focus:ring-2 focus:ring-primary-500"
+        />
+      </div> */}
+
+      <div className="flex items-center justify-end gap-3 pt-2">
+        <Button variant="secondary" type="button" onClick={onClose} disabled={submitting}>
+          Cancel
+        </Button>
+        <Button type="submit" loading={submitting} icon="mdi:crown-outline">
+          Grant Subscription
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function UsersPage(): React.JSX.Element {
+  const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [summaryData, setSummaryData] = useState<SummaryData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -333,6 +468,7 @@ export default function UsersPage(): React.JSX.Element {
 
   // Modals
   const [detailUserId, setDetailUserId] = useState<string | null>(null);
+  const [grantUserId, setGrantUserId] = useState<string | null>(null);
 
   useEffect(() => {
     setQueryState((prev) => ({ ...prev, search: debouncedSearch, page: 1 }));
@@ -434,6 +570,7 @@ export default function UsersPage(): React.JSX.Element {
           user={user}
           onStatusChange={handleStatusUpdate}
           onViewDetails={(id) => setDetailUserId(id)}
+          onGrantSubscription={(id) => setGrantUserId(id)}
         />
       ),
     },
@@ -458,6 +595,12 @@ export default function UsersPage(): React.JSX.Element {
               Manage platform users — view details, change status, or remove accounts.
             </p>
           </div>
+          <Button
+            icon="mdi:account-plus-outline"
+            onClick={() => router.push("/dashboard/users/add")}
+          >
+            Add User
+          </Button>
         </div>
 
         {!summaryData ? (
@@ -524,6 +667,24 @@ export default function UsersPage(): React.JSX.Element {
             userId={detailUserId}
             onClose={() => setDetailUserId(null)}
             onStatusChange={handleStatusUpdate}
+          />
+        )}
+      </Modal>
+
+      <Modal
+        isOpen={!!grantUserId}
+        onClose={() => setGrantUserId(null)}
+        title="Grant Subscription"
+        maxWidth="max-w-lg"
+      >
+        {grantUserId && (
+          <GrantSubscriptionModal
+            userId={grantUserId}
+            onClose={() => setGrantUserId(null)}
+            onGranted={() => {
+              void fetchUsers(false);
+              void fetchStats();
+            }}
           />
         )}
       </Modal>
