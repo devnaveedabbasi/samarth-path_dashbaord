@@ -28,7 +28,7 @@ export default function SummaryCards({ data = [] }: SummaryCardsProps) {
           </p>
 
           <div className="flex items-center  justify-between gap-3">
-            <p className="flex-1 min-w-0 text-2xl sm:text-3xl lg:text-4xl font-bold text-primary-600  break-all">
+            <p className="flex-1 min-w-0 text-2xl sm:text-3xl lg:text-3xl font-bold text-primary-600  break-all">
               {item.value}
             </p>
             <div className="bg-primary-100 p-2 sm:p-3 rounded-full shrink-0">
