@@ -122,6 +122,8 @@ export default function PrizesManagementPage() {
   const [editForm, setEditForm] = useState<PrizeForm>(emptyForm);
   const [editSaving, setEditSaving] = useState(false);
 
+  const [viewTarget, setViewTarget] = useState<Prize | null>(null);
+
   const [deleteTarget, setDeleteTarget] = useState<Prize | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
@@ -176,6 +178,12 @@ export default function PrizesManagementPage() {
     }
   };
 
+  useEffect(() => {
+    if (activeTab === "weekly") {
+      fetchCurrentWeek();
+    }
+  }, [activeTab]);
+
   const openCreateModal = () => {
     setCreateForm(emptyForm);
     setShowCreateModal(true);
@@ -204,6 +212,7 @@ export default function PrizesManagementPage() {
         setShowCreateModal(false);
         setCreateForm(emptyForm);
         fetchPrizes();
+        fetchCurrentWeek();
       }
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to create weekly prize");
@@ -261,6 +270,7 @@ export default function PrizesManagementPage() {
         toast.success("Prize deleted");
         setDeleteTarget(null);
         fetchPrizes();
+        if (deleteTarget.prizeType === "weekly") fetchCurrentWeek();
       }
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to delete prize");
@@ -333,6 +343,13 @@ export default function PrizesManagementPage() {
       cell: (item) => (
         <div className="flex items-center gap-1.5">
           <button
+            onClick={() => setViewTarget(item)}
+            title="View Prize"
+            className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors border border-transparent hover:border-emerald-200"
+          >
+            <Icon icon="mdi:eye-outline" className="w-4 h-4" />
+          </button>
+          <button
             onClick={() => openEdit(item)}
             title="Edit Prize"
             className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-200"
@@ -388,7 +405,7 @@ export default function PrizesManagementPage() {
             </button>
           </div>
 
-          {activeTab === "weekly" && (
+          {activeTab === "weekly" && !currentWeek?.prizeAlreadyExists && (
             <Button icon="mdi:plus" onClick={openCreateModal}>
               Create Weekly Prize
             </Button>
@@ -566,6 +583,73 @@ export default function PrizesManagementPage() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* View Prize Modal */}
+      <Modal isOpen={!!viewTarget} onClose={() => setViewTarget(null)} title="Prize Details" maxWidth="max-w-lg">
+        {viewTarget && (
+          <div className="space-y-5">
+            {viewTarget.imageUrl ? (
+              <img
+                src={viewTarget.imageUrl}
+                alt={viewTarget.title}
+                className="w-full h-48 object-cover rounded-xl border border-gray-100"
+              />
+            ) : (
+              <div className="w-full h-48 rounded-xl bg-primary-50 flex items-center justify-center">
+                <Icon icon="mdi:gift-outline" className="w-12 h-12 text-primary-300" />
+              </div>
+            )}
+
+            <div className="flex items-start justify-between gap-3">
+              <h2 className="text-xl font-bold text-gray-900">{viewTarget.title}</h2>
+              <span
+                className={`shrink-0 px-3 py-1 rounded-full text-xs font-bold uppercase ${
+                  viewTarget.prizeType === "daily" ? "bg-blue-50 text-blue-600" : "bg-purple-50 text-purple-600"
+                }`}
+              >
+                {viewTarget.prizeType}
+              </span>
+            </div>
+
+            {viewTarget.description && (
+              <p className="text-sm text-gray-600 leading-relaxed">{viewTarget.description}</p>
+            )}
+
+            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+              {viewTarget.prizeType === "daily" ? (
+                viewTarget.quizId ? (
+                  <div className="flex items-center gap-2 text-sm text-gray-700">
+                    <Icon icon="mdi:help-circle-outline" className="w-4 h-4 text-gray-400" />
+                    <span className="font-medium">{viewTarget.quizId.quizContent?.title || "Quiz"}</span>
+                    <span className="text-gray-400">•</span>
+                    <span>
+                      {new Date(viewTarget.quizId.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                    </span>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400">Linked quiz has been deleted.</p>
+                )
+              ) : (
+                <div className="flex items-center gap-2 text-sm text-gray-700">
+                  <Icon icon="mdi:calendar-week" className="w-4 h-4 text-gray-400" />
+                  <span className="font-medium">
+                    Week {viewTarget.weekNumber}, {viewTarget.year}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <p className="text-xs text-gray-400">
+              Created on{" "}
+              {new Date(viewTarget.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+            </p>
+
+            <Button variant="secondary" className="w-full!" onClick={() => setViewTarget(null)}>
+              Close
+            </Button>
+          </div>
+        )}
       </Modal>
 
       {/* Delete Confirm Modal */}
