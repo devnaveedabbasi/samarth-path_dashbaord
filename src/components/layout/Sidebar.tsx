@@ -23,7 +23,8 @@ import {
   X,
   ClipboardPen,
   ChevronLeft,
-  Gift
+  Gift,
+  Award
 } from "lucide-react";
 
 type NavItem = {
@@ -71,6 +72,11 @@ const navGroups: NavGroup[] = [
     groupLabel: "Winner",
     groupIcon: Gift,
     link: "/dashboard/winners"
+  },
+  {
+    groupLabel: "Prizes",
+    groupIcon: Award,
+    link: "/dashboard/prizes"
   },
   // {
   //   groupLabel: "Finance",

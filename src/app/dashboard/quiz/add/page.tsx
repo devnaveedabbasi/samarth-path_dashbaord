@@ -25,9 +25,25 @@ const schema = Yup.object({
 
 type FormValues = Yup.InferType<typeof schema>;
 
+interface PrizeForm {
+  title: string;
+  description: string;
+  imageFile: File | null;
+  imagePreview: string;
+}
+
+const emptyPrizeForm: PrizeForm = { title: "", description: "", imageFile: null, imagePreview: "" };
+
 export default function AddQuizPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+
+  // Step 2: mandatory Daily Prize for the quiz just created
+  const [step, setStep] = useState<1 | 2>(1);
+  const [createdQuiz, setCreatedQuiz] = useState<{ id: string; question: string } | null>(null);
+  const [prizeForm, setPrizeForm] = useState<PrizeForm>(emptyPrizeForm);
+  const [prizeError, setPrizeError] = useState<string | undefined>(undefined);
+  const [prizeSaving, setPrizeSaving] = useState(false);
 
   const {
     register,
@@ -72,13 +88,57 @@ export default function AddQuizPage() {
 
       const response = await axiosInstance.post("/daily-content/quiz", payload, getConfig());
       if (response.data.success) {
-        toast.success("Quiz Scheduled Successfully!");
-        router.push("/dashboard/quiz");
+        toast.success("Quiz Scheduled! Now add the Daily Prize for it.");
+        setCreatedQuiz({ id: response.data.data._id, question: values.question });
+        setStep(2);
       }
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to schedule quiz");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePrizeImageChange = (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Only image files are allowed");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be under 5MB");
+      return;
+    }
+    setPrizeForm((p) => ({ ...p, imageFile: file, imagePreview: URL.createObjectURL(file) }));
+  };
+
+  const handleSavePrize = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!prizeForm.title.trim()) {
+      setPrizeError("Prize title is required");
+      return;
+    }
+    setPrizeError(undefined);
+    setPrizeSaving(true);
+    try {
+      const formData = new FormData();
+      formData.append("title", prizeForm.title.trim());
+      formData.append("description", prizeForm.description.trim());
+      if (prizeForm.imageFile) formData.append("image", prizeForm.imageFile);
+
+      const response = await axiosInstance.post(
+        `/daily-content/quiz/${createdQuiz?.id}/prize`,
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+
+      if (response.data.success) {
+        toast.success("Daily prize added successfully!");
+        router.push("/dashboard/quiz");
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to add daily prize");
+    } finally {
+      setPrizeSaving(false);
     }
   };
 
@@ -94,6 +154,107 @@ export default function AddQuizPage() {
     { id: "3", field: "option3" as const },
     { id: "4", field: "option4" as const },
   ];
+
+  if (step === 2 && createdQuiz) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] p-6 lg:p-8">
+        <div className="max-w-2xl mx-auto">
+          <div className="flex items-center gap-4 mb-8">
+            <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+              <Icon icon="mdi:check-bold" className="w-6 h-6 text-emerald-600" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Step 2: Add Daily Prize</h1>
+              <p className="text-sm text-gray-500">
+                Quiz "{createdQuiz.question.slice(0, 60)}
+                {createdQuiz.question.length > 60 ? "…" : ""}" was scheduled. A daily prize is
+                required before you can finish.
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={handleSavePrize} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-5">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Prize Title <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={prizeForm.title}
+                onChange={(e) => {
+                  setPrizeForm((p) => ({ ...p, title: e.target.value }));
+                  setPrizeError(undefined);
+                }}
+                placeholder="e.g. Amazon Gift Card - Rs. 500"
+                className={inputStyle(!!prizeError)}
+              />
+              <ErrorMsg msg={prizeError} />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Description <span className="text-gray-400 font-normal text-xs">(Optional)</span>
+              </label>
+              <textarea
+                value={prizeForm.description}
+                onChange={(e) => setPrizeForm((p) => ({ ...p, description: e.target.value }))}
+                rows={3}
+                placeholder="Optional description..."
+                className="w-full p-4 rounded-xl border border-gray-200 outline-none transition-all resize-none focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Prize Image <span className="text-gray-400 font-normal text-xs">(Optional)</span>
+              </label>
+              <label
+                htmlFor="daily-prize-image-upload"
+                className="relative cursor-pointer rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 hover:border-primary-400 hover:bg-primary-50/40 transition-all overflow-hidden flex items-center justify-center"
+              >
+                {prizeForm.imagePreview ? (
+                  <div className="relative w-full h-36 group">
+                    <img
+                      src={prizeForm.imagePreview}
+                      alt="Prize preview"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Icon icon="mdi:camera-retake-outline" className="w-7 h-7 text-white mb-1" />
+                      <p className="text-white text-sm font-medium">Change Image</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+                    <Icon icon="mdi:cloud-upload-outline" className="w-8 h-8 text-primary-500 mb-2" />
+                    <p className="text-sm font-semibold text-gray-700">Click to upload an image</p>
+                    <p className="text-xs text-gray-400 mt-1">PNG, JPG, WEBP — max 5MB</p>
+                  </div>
+                )}
+                <input
+                  id="daily-prize-image-upload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handlePrizeImageChange(file);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <Button type="submit" loading={prizeSaving} icon="mdi:gift">
+                Save Prize & Finish
+              </Button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] p-6 lg:p-8">

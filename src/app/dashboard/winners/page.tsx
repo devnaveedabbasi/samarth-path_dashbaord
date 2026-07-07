@@ -9,7 +9,6 @@ import { CustomDropdown } from "@/components/ui/Dropdown";
 import { DataTable } from "@/components/ui/DataTable";
 import SummaryCards from "@/components/ui/SummaryCards";
 import { SummaryCardSkeleton } from "@/components/ui/SummaryCards";
-import { Modal } from "@/components/ui/Modal";
 import toast from "react-hot-toast";
 
 // Types
@@ -74,28 +73,6 @@ interface WinnerData {
   };
 }
 
-interface Prize {
-  _id: string;
-  title: string;
-  description?: string;
-  imageUrl?: string;
-  prizeType: "daily" | "weekly";
-}
-
-interface PrizeForm {
-  title: string;
-  description: string;
-  imageFile: File | null;
-  imagePreview: string;
-}
-
-const emptyPrizeForm: PrizeForm = {
-  title: "",
-  description: "",
-  imageFile: null,
-  imagePreview: "",
-};
-
 export default function WinnersManagement() {
   const [activeTab, setActiveTab] = useState<"daily" | "weekly">("daily");
   const [loading, setLoading] = useState(true);
@@ -111,13 +88,6 @@ export default function WinnersManagement() {
   const [filterRank, setFilterRank] = useState<number | "all">("all");
   const [showWinnerModal, setShowWinnerModal] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-
-  // Prize state
-  const [prize, setPrize] = useState<Prize | null>(null);
-  const [prizeLoading, setPrizeLoading] = useState(false);
-  const [prizeSaving, setPrizeSaving] = useState(false);
-  const [showPrizeModal, setShowPrizeModal] = useState(false);
-  const [prizeForm, setPrizeForm] = useState<PrizeForm>(emptyPrizeForm);
 
   // Fetch data based on active tab
   const fetchData = async () => {
@@ -153,100 +123,9 @@ export default function WinnersManagement() {
     }
   };
 
-  // Fetch the prize (if any) assigned to the current daily/weekly winner
-  const fetchPrize = async () => {
-    if (!selectedWinner) {
-      setPrize(null);
-      return;
-    }
-    setPrizeLoading(true);
-    try {
-      const response = await axiosInstance.get(`/winners/${activeTab}/prize`);
-      const result = response.data;
-      if (result.success) {
-        setPrize(result.data.prize || null);
-      }
-    } catch (error) {
-      // No winner selected yet for this cycle — not an error state, just no prize to show
-      setPrize(null);
-    } finally {
-      setPrizeLoading(false);
-    }
-  };
-
   useEffect(() => {
     fetchData();
   }, [activeTab]);
-
-  useEffect(() => {
-    fetchPrize();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedWinner, activeTab]);
-
-  const openAssignPrizeModal = () => {
-    setPrizeForm(
-      prize
-        ? {
-            title: prize.title,
-            description: prize.description || "",
-            imageFile: null,
-            imagePreview: "",
-          }
-        : emptyPrizeForm
-    );
-    setShowPrizeModal(true);
-  };
-
-  const handlePrizeImageChange = (file: File) => {
-    if (!file.type.startsWith("image/")) {
-      toast.error("Only image files are allowed");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Image must be under 5MB");
-      return;
-    }
-    setPrizeForm((p) => ({
-      ...p,
-      imageFile: file,
-      imagePreview: URL.createObjectURL(file),
-    }));
-  };
-
-  const handleSavePrize = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!prizeForm.title.trim()) {
-      toast.error("Prize title is required");
-      return;
-    }
-
-    setPrizeSaving(true);
-    try {
-      const formData = new FormData();
-      formData.append("title", prizeForm.title.trim());
-      formData.append("description", prizeForm.description.trim());
-      if (prizeForm.imageFile) formData.append("image", prizeForm.imageFile);
-
-      const config = { headers: { "Content-Type": "multipart/form-data" } };
-
-      const response = prize
-        ? await axiosInstance.put(`/winners/prize/${prize._id}`, formData, config)
-        : await axiosInstance.post(`/winners/${activeTab}/prize`, formData, config);
-
-      const result = response.data;
-      if (result.success) {
-        toast.success(
-          prize ? "Prize updated successfully!" : "Prize assigned successfully!"
-        );
-        setPrize(result.data.prize);
-        setShowPrizeModal(false);
-      }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to save prize");
-    } finally {
-      setPrizeSaving(false);
-    }
-  };
 
   // Select winner
   const handleSelectWinner = async (userId: string) => {
@@ -677,56 +556,6 @@ export default function WinnersManagement() {
               </div>
             </div>
 
-            {/* Prize section */}
-            <div className="md:w-72 shrink-0">
-              {prizeLoading ? (
-                <div className="h-full min-h-[88px] bg-white/60 border border-green-200 rounded-xl animate-pulse" />
-              ) : prize ? (
-                <div className="bg-white border border-green-200 rounded-xl p-4">
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-700">
-                      <Icon icon="mdi:gift" className="w-4 h-4" />
-                      Prize Assigned
-                    </span>
-                    <button
-                      onClick={openAssignPrizeModal}
-                      className="text-gray-400 hover:text-primary-600 transition-colors"
-                      title="Edit Prize"
-                    >
-                      <Icon icon="mdi:pencil-outline" className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {prize.imageUrl && (
-                      <img
-                        src={prize.imageUrl}
-                        alt={prize.title}
-                        className="w-10 h-10 rounded-lg object-cover border border-gray-100"
-                      />
-                    )}
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 truncate">
-                        {prize.title}
-                      </p>
-                      {prize.description && (
-                        <p className="text-xs text-gray-500 truncate">
-                          {prize.description}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <Button
-                  variant="primary"
-                  className="w-full!"
-                  onClick={openAssignPrizeModal}
-                >
-                  <Icon icon="mdi:gift-outline" className="w-4 h-4" />
-                  Assign Prize
-                </Button>
-              )}
-            </div>
           </div>
         </div>
       )}
@@ -840,112 +669,6 @@ export default function WinnersManagement() {
 
       {/* Winner Confirm Modal */}
       <WinnerConfirmModal />
-
-      {/* Assign / Edit Prize Modal */}
-      <Modal
-        isOpen={showPrizeModal}
-        onClose={() => setShowPrizeModal(false)}
-        title={prize ? "Edit Prize" : "Assign Prize"}
-      >
-        <form onSubmit={handleSavePrize} className="space-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Prize Title <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={prizeForm.title}
-              onChange={(e) =>
-                setPrizeForm((p) => ({ ...p, title: e.target.value }))
-              }
-              placeholder="e.g. Amazon Gift Card - Rs. 2000"
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 bg-gray-50/50 focus:bg-white transition-all"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Description
-            </label>
-            <textarea
-              value={prizeForm.description}
-              onChange={(e) =>
-                setPrizeForm((p) => ({ ...p, description: e.target.value }))
-              }
-              placeholder="Optional description..."
-              rows={3}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 bg-gray-50/50 focus:bg-white transition-all resize-none"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Prize Image
-            </label>
-            <label
-              htmlFor="prize-image-upload"
-              className="relative cursor-pointer rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 hover:border-primary-400 hover:bg-primary-50/40 transition-all overflow-hidden flex items-center justify-center"
-            >
-              {prizeForm.imagePreview || (prize && prize.imageUrl) ? (
-                <div className="relative w-full h-36 group">
-                  <img
-                    src={prizeForm.imagePreview || prize?.imageUrl}
-                    alt="Prize preview"
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Icon icon="mdi:camera-retake-outline" className="w-7 h-7 text-white mb-1" />
-                    <p className="text-white text-sm font-medium">Change Image</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
-                  <Icon icon="mdi:cloud-upload-outline" className="w-8 h-8 text-primary-500 mb-2" />
-                  <p className="text-sm font-semibold text-gray-700">Click to upload an image</p>
-                  <p className="text-xs text-gray-400 mt-1">PNG, JPG, WEBP — max 5MB</p>
-                </div>
-              )}
-              <input
-                id="prize-image-upload"
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handlePrizeImageChange(file);
-                  e.target.value = "";
-                }}
-              />
-            </label>
-            {prize && !prizeForm.imagePreview && prize.imageUrl && (
-              <p className="mt-1.5 flex items-center gap-1 text-xs text-gray-500">
-                <Icon icon="mdi:information-outline" className="w-3.5 h-3.5 text-blue-400" />
-                Leave empty to keep the current image. Upload a new file to replace it.
-              </p>
-            )}
-          </div>
-
-          <div className="flex gap-3 pt-2">
-            <Button
-              type="button"
-              variant="secondary"
-              className="w-full!"
-              onClick={() => setShowPrizeModal(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              className="w-full!"
-              loading={prizeSaving}
-            >
-              <Icon icon="mdi:gift" className="w-4 h-4" />
-              {prize ? "Save Changes" : "Assign Prize"}
-            </Button>
-          </div>
-        </form>
-      </Modal>
     </div>
   );
 }
