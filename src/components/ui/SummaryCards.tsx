@@ -28,9 +28,13 @@ export default function SummaryCards({ data = [] }: SummaryCardsProps) {
           </p>
 
           <div className="flex items-center  justify-between gap-3">
-            <p className="flex-1 min-w-0 text-2xl sm:text-3xl lg:text-3xl font-bold text-primary-600  break-all">
-              {item.value}
-            </p>
+            <p className="flex-1 min-w-0 text-2xl sm:text-3xl lg:text-3xl font-bold text-primary-600 break-all">
+  {item.value
+    ? item.value.toString().length > 6
+      ? `${item.value.toString().slice(0, 6)}...`
+      : item.value.toString()
+    : "0"}
+</p>
             <div className="bg-primary-100 p-2 sm:p-3 rounded-full shrink-0">
               <Icon
                 icon={item.icon}
