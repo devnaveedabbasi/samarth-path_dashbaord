@@ -67,6 +67,8 @@ const STATUS_OPTIONS_FILTER = [
   { value: "approved", label: "Approved" },
   { value: "blocked", label: "Blocked" },
   { value: "suspended", label: "Suspended" },
+  { value: "subscribed", label: "Subscription" },
+  { value: "free", label: "Free" },
 ];
 
 const DEFAULT_QUERY: QueryState = { page: 1, limit: 10, search: "", status: "" };
@@ -481,7 +483,9 @@ export default function UsersPage(): React.JSX.Element {
       params.append("page", queryState.page.toString());
       params.append("limit", queryState.limit.toString());
       if (queryState.search) params.append("search", queryState.search);
-      if (queryState.status) params.append("status", queryState.status);
+      if (queryState.status === "subscribed") params.append("isSubscribed", "true");
+      else if (queryState.status === "free") params.append("isSubscribed", "false");
+      else if (queryState.status) params.append("status", queryState.status);
 
       const res = await axiosInstance.get(`/users?${params.toString()}`, getConfig());
       if (res.data.success) {

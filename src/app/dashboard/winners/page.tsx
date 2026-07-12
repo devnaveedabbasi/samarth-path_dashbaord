@@ -10,6 +10,7 @@ import { DataTable } from "@/components/ui/DataTable";
 import SummaryCards from "@/components/ui/SummaryCards";
 import { SummaryCardSkeleton } from "@/components/ui/SummaryCards";
 import toast from "react-hot-toast";
+import { downloadBlobResponse } from "@/utils/downloadFile";
 
 // Types
 interface WinnerStats {
@@ -73,8 +74,11 @@ interface WinnerData {
   };
 }
 
+const todayStr = () => new Date().toISOString().slice(0, 10);
+
 export default function WinnersManagement() {
   const [activeTab, setActiveTab] = useState<"daily" | "weekly">("daily");
+  const [selectedDate, setSelectedDate] = useState(todayStr());
   const [loading, setLoading] = useState(true);
   const [selectingWinner, setSelectingWinner] = useState(false);
   const [data, setData] = useState<WinnerData>({
@@ -88,6 +92,8 @@ export default function WinnersManagement() {
   const [filterRank, setFilterRank] = useState<number | "all">("all");
   const [showWinnerModal, setShowWinnerModal] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [exportingLeaderboard, setExportingLeaderboard] = useState(false);
+  const [exportingCorrectAttempts, setExportingCorrectAttempts] = useState(false);
 
   // Fetch data based on active tab
   const fetchData = async () => {
@@ -95,7 +101,7 @@ export default function WinnersManagement() {
     try {
       const endpoint =
         activeTab === "daily"
-          ? "/winners/attempters/daily"
+          ? `/winners/attempters/daily?date=${selectedDate}`
           : "/winners/attempters/weekly";
 
       const response = await axiosInstance.get(endpoint);
@@ -125,7 +131,7 @@ export default function WinnersManagement() {
 
   useEffect(() => {
     fetchData();
-  }, [activeTab]);
+  }, [activeTab, selectedDate]);
 
   // Select winner
   const handleSelectWinner = async (userId: string) => {
@@ -136,7 +142,10 @@ export default function WinnersManagement() {
           ? `/winners/select/daily/${userId}`
           : `/winners/select/weekly/${userId}`;
 
-      const response = await axiosInstance.post(endpoint);
+      const response = await axiosInstance.post(
+        endpoint,
+        activeTab === "daily" ? { date: selectedDate } : undefined
+      );
       const result = response.data;
 
       if (result.success) {
@@ -152,6 +161,36 @@ export default function WinnersManagement() {
       toast.error(error.response?.data?.message || "Failed to select winner");
     } finally {
       setSelectingWinner(false);
+    }
+  };
+
+  const handleExportLeaderboard = async () => {
+    setExportingLeaderboard(true);
+    try {
+      const res = await axiosInstance.get(
+        `/winners/attempters/daily/export/leaderboard?date=${selectedDate}`,
+        { responseType: "blob" }
+      );
+      downloadBlobResponse(res.data, `leaderboard-${selectedDate}.xlsx`);
+    } catch {
+      toast.error("Export failed");
+    } finally {
+      setExportingLeaderboard(false);
+    }
+  };
+
+  const handleExportCorrectAttempts = async () => {
+    setExportingCorrectAttempts(true);
+    try {
+      const res = await axiosInstance.get(
+        `/winners/attempters/daily/export/correct-attempts?date=${selectedDate}`,
+        { responseType: "blob" }
+      );
+      downloadBlobResponse(res.data, `correct-attempts-${selectedDate}.xlsx`);
+    } catch {
+      toast.error("Export failed");
+    } finally {
+      setExportingCorrectAttempts(false);
     }
   };
 
@@ -584,6 +623,17 @@ export default function WinnersManagement() {
 
       {/* Filters */}
       <div className="mt-6 flex flex-col sm:flex-row gap-4">
+        {activeTab === "daily" && (
+          <div className="w-full sm:w-48">
+            <input
+              type="date"
+              value={selectedDate}
+              max={todayStr()}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="w-full h-11 px-4 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+            />
+          </div>
+        )}
         <div className="flex-1">
           <SearchInput
             value={searchTerm}
@@ -606,6 +656,7 @@ export default function WinnersManagement() {
           onClick={() => {
             setSearchTerm("");
             setFilterRank("all");
+            setSelectedDate(todayStr());
           }}
         >
           <Icon icon="mdi:refresh" className="w-4 h-4" />
@@ -623,11 +674,25 @@ export default function WinnersManagement() {
               {filteredLeaderboard?.length || 0} users
             </span>
           </div>
-          {selectedWinner && (
-            <span className="text-xs text-green-600 bg-green-50 px-3 py-1 rounded-full">
-              Winner Selected
-            </span>
-          )}
+          <div className="flex items-center gap-3">
+            {selectedWinner && (
+              <span className="text-xs text-green-600 bg-green-50 px-3 py-1 rounded-full">
+                Winner Selected
+              </span>
+            )}
+            {activeTab === "daily" && (
+              <Button
+                variant="secondary"
+                className="!w-auto !h-9 !px-3"
+                icon="mdi:microsoft-excel"
+                loading={exportingLeaderboard}
+                disabled={(filteredLeaderboard?.length || 0) === 0}
+                onClick={handleExportLeaderboard}
+              >
+                Download
+              </Button>
+            )}
+          </div>
         </div>
         <DataTable
           data={(filteredLeaderboard || []) as any}
@@ -653,6 +718,18 @@ export default function WinnersManagement() {
               {data.correctAttempts?.length || 0} attempts
             </span>
           </div>
+          {activeTab === "daily" && (
+            <Button
+              variant="secondary"
+              className="!w-auto !h-9 !px-3"
+              icon="mdi:microsoft-excel"
+              loading={exportingCorrectAttempts}
+              disabled={(data.correctAttempts?.length || 0) === 0}
+              onClick={handleExportCorrectAttempts}
+            >
+              Download
+            </Button>
+          )}
         </div>
         <DataTable
           data={data.correctAttempts?.map(item => ({

@@ -13,6 +13,7 @@ import { CustomDropdown } from "@/components/ui/Dropdown";
 import SearchInput from "@/components/ui/SearchInput";
 import Button from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { downloadBlobResponse } from "@/utils/downloadFile";
 
 function DeleteConfirmModal({ name, loading, onConfirm, onClose }: {
   name: string; loading: boolean; onConfirm: () => void; onClose: () => void;
@@ -63,6 +64,21 @@ interface QuizItem {
   createdAt: string;
 }
 
+interface QuizAttemptItem {
+  _id: string;
+  userId?: { _id: string; name: string; email?: string; phone?: string } | null;
+  selectedOptionId: string;
+  isCorrect: boolean;
+  timeTakenSeconds: number;
+  createdAt: string;
+}
+
+interface AttemptsQuizInfo {
+  _id: string;
+  quizContent: QuizItem["quizContent"];
+  date: string;
+}
+
 export default function QuizManagementPage() {
   const [quizList, setQuizList] = useState<QuizItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,6 +103,17 @@ export default function QuizManagementPage() {
   const [deleteTarget, setDeleteTarget] = useState<QuizItem | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [viewTarget, setViewTarget] = useState<QuizItem | null>(null);
+
+  // ─── Attempts-by-date state ───────────────────────────────────────────────
+  const [attemptsDate, setAttemptsDate] = useState("");
+  const [attemptsPage, setAttemptsPage] = useState(1);
+  const [attemptsQuiz, setAttemptsQuiz] = useState<AttemptsQuizInfo | null>(null);
+  const [attempts, setAttempts] = useState<QuizAttemptItem[]>([]);
+  const [attemptsLoading, setAttemptsLoading] = useState(false);
+  const [attemptsPagination, setAttemptsPagination] = useState<PaginationInfo>({
+    currentPage: 1, totalPages: 1, totalItems: 0, itemsPerPage: 20, hasNextPage: false, hasPrevPage: false,
+  });
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     setQueryState((prev) => ({ ...prev, search: debouncedSearch, page: 1 }));
@@ -158,6 +185,61 @@ export default function QuizManagementPage() {
       if (res.data.success) { toast.success("Quiz deleted"); setDeleteTarget(null); fetchQuizzes(); }
     } catch (e: any) { toast.error(e?.response?.data?.message ?? "Delete failed"); }
     finally { setDeleteLoading(false); }
+  };
+
+  // ─── Attempts-by-date fetching ────────────────────────────────────────────
+  const fetchAttempts = useCallback(async () => {
+    if (!attemptsDate) {
+      setAttemptsQuiz(null);
+      setAttempts([]);
+      return;
+    }
+    setAttemptsLoading(true);
+    try {
+      const params = new URLSearchParams({
+        date: attemptsDate,
+        page: String(attemptsPage),
+        limit: "20",
+      });
+      const res = await axiosInstance.get(`/daily-content/quiz/attempts?${params.toString()}`, getConfig());
+      if (res.data.success) {
+        const { quiz, attempts: rows, totalAttempts, currentPage, totalPages } = res.data.data;
+        setAttemptsQuiz(quiz);
+        setAttempts(rows || []);
+        setAttemptsPagination({
+          currentPage: currentPage || 1,
+          totalPages: totalPages || 1,
+          totalItems: totalAttempts || 0,
+          itemsPerPage: 20,
+          hasNextPage: (currentPage || 1) < (totalPages || 1),
+          hasPrevPage: (currentPage || 1) > 1,
+        });
+      }
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message ?? "Failed to fetch attempts");
+      setAttemptsQuiz(null);
+      setAttempts([]);
+    } finally {
+      setAttemptsLoading(false);
+    }
+  }, [attemptsDate, attemptsPage]);
+
+  useEffect(() => { fetchAttempts(); }, [fetchAttempts]);
+
+  const handleExportAttempts = async () => {
+    if (!attemptsDate) return;
+    setExporting(true);
+    try {
+      const res = await axiosInstance.get(
+        `/daily-content/quiz/attempts/export?date=${attemptsDate}`,
+        { ...getConfig(), responseType: "blob" }
+      );
+      downloadBlobResponse(res.data, `quiz-attempts-${attemptsDate}.xlsx`);
+    } catch (e: any) {
+      toast.error("Export failed");
+    } finally {
+      setExporting(false);
+    }
   };
 
   // ─── Table Columns ────────────────────────────────────────────────────────
@@ -300,6 +382,97 @@ export default function QuizManagementPage() {
           emptyTitle="No Quizzes Found"
           emptyDescription="Start by creating your first daily quiz."
         />
+      </div>
+
+      <div className="bg-white/80 backdrop-blur-xl border border-gray-100 shadow-sm rounded-2xl">
+        <div className="flex flex-col gap-4 p-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">Quiz Attempts by Date</h2>
+              <p className="text-xs text-gray-500 mt-0.5">Select a date to view and export that day's quiz attempts.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="date"
+                value={attemptsDate}
+                max={new Date().toISOString().slice(0, 10)}
+                onChange={(e) => { setAttemptsDate(e.target.value); setAttemptsPage(1); }}
+                className="h-11 px-4 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+              />
+              <Button
+                icon="mdi:microsoft-excel"
+                title="Download Excel"
+                variant="secondary"
+                loading={exporting}
+                disabled={!attemptsDate || attempts.length === 0}
+                onClick={handleExportAttempts}
+              >
+                Download Excel
+              </Button>
+            </div>
+          </div>
+
+          {attemptsDate && attemptsQuiz && (
+            <div className="p-4 bg-primary-50/30 rounded-xl border border-primary-100/50">
+              <p className="text-xs font-bold text-primary-600 uppercase tracking-widest mb-1">Quiz</p>
+              <p className="text-sm font-semibold text-gray-800">{attemptsQuiz.quizContent?.title}</p>
+            </div>
+          )}
+        </div>
+
+        {!attemptsDate ? (
+          <div className="text-center py-12 px-6 text-sm text-gray-500">Pick a date above to view attempts.</div>
+        ) : (
+          <DataTable
+            columns={[
+              {
+                key: "user",
+                header: "User",
+                cell: (a: QuizAttemptItem) => (
+                  <div className="flex flex-col">
+                    <span className="text-sm font-semibold text-gray-800">{a.userId?.name || "—"}</span>
+                    <span className="text-xs text-gray-500">{a.userId?.email || a.userId?.phone || "—"}</span>
+                  </div>
+                ),
+              },
+              {
+                key: "selectedOptionId",
+                header: "Selected Option",
+                cell: (a: QuizAttemptItem) => {
+                  const opt = attemptsQuiz?.quizContent?.options?.find((o) => o.id === a.selectedOptionId);
+                  return <span className="text-sm text-gray-700">{opt?.text || a.selectedOptionId}</span>;
+                },
+              },
+              {
+                key: "isCorrect",
+                header: "Result",
+                cell: (a: QuizAttemptItem) => (
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${a.isCorrect ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
+                    {a.isCorrect ? "Correct" : "Incorrect"}
+                  </span>
+                ),
+              },
+              {
+                key: "timeTakenSeconds",
+                header: "Time Taken",
+                cell: (a: QuizAttemptItem) => <span className="text-sm text-gray-600">{a.timeTakenSeconds}s</span>,
+              },
+              {
+                key: "createdAt",
+                header: "Attempted At",
+                cell: (a: QuizAttemptItem) => (
+                  <span className="text-sm text-gray-600">{new Date(a.createdAt).toLocaleString()}</span>
+                ),
+              },
+            ]}
+            data={attempts}
+            loading={attemptsLoading}
+            pagination={attemptsPagination}
+            onPageChange={(page) => setAttemptsPage(page)}
+            emptyTitle="No Attempts Found"
+            emptyDescription="No one has attempted the quiz on this date yet."
+          />
+        )}
       </div>
 
       <Modal isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Delete Quiz" maxWidth="max-w-sm">
