@@ -62,7 +62,27 @@ interface QuizItem {
   commentsCount: number;
   bookmarksCount: number;
   createdAt: string;
+  prize?: {
+    _id: string;
+    title: string;
+    description?: string;
+    imageUrl?: string;
+  } | null;
 }
+
+interface PrizeForm {
+  title: string;
+  description: string;
+  imageFile: File | null;
+  imagePreview: string;
+}
+
+const emptyPrizeForm: PrizeForm = {
+  title: "",
+  description: "",
+  imageFile: null,
+  imagePreview: "",
+};
 
 interface QuizAttemptItem {
   _id: string;
@@ -77,6 +97,56 @@ interface AttemptsQuizInfo {
   _id: string;
   quizContent: QuizItem["quizContent"];
   date: string;
+}
+
+function ImagePicker({
+  preview,
+  existingUrl,
+  onChange,
+}: {
+  preview: string;
+  existingUrl?: string;
+  onChange: (file: File) => void;
+}) {
+  const inputId = React.useId();
+  return (
+    <div>
+      <label className="block text-sm font-semibold text-gray-700 mb-2">
+        Prize Image <span className="text-gray-400 font-normal text-xs">(Optional)</span>
+      </label>
+      <label
+        htmlFor={inputId}
+        className="relative cursor-pointer rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 hover:border-primary-400 hover:bg-primary-50/40 transition-all overflow-hidden flex items-center justify-center"
+      >
+        {preview || existingUrl ? (
+          <div className="relative w-full h-36 group">
+            <img src={preview || existingUrl} alt="Prize preview" className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <Icon icon="mdi:camera-retake-outline" className="w-7 h-7 text-white mb-1" />
+              <p className="text-white text-sm font-medium">Change Image</p>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+            <Icon icon="mdi:cloud-upload-outline" className="w-8 h-8 text-primary-500 mb-2" />
+            <p className="text-sm font-semibold text-gray-700">Click to upload an image</p>
+            <p className="text-xs text-gray-400 mt-1">PNG, JPG, WEBP — max 5MB</p>
+          </div>
+        )}
+        <input
+          id={inputId}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) onChange(file);
+            e.target.value = "";
+          }}
+        />
+      </label>
+    </div>
+  );
 }
 
 export default function QuizManagementPage() {
@@ -114,6 +184,13 @@ export default function QuizManagementPage() {
     currentPage: 1, totalPages: 1, totalItems: 0, itemsPerPage: 20, hasNextPage: false, hasPrevPage: false,
   });
   const [exporting, setExporting] = useState(false);
+
+  // ─── Prize state ───────────────────────────────────────────────
+  const [addPrizeTarget, setAddPrizeTarget] = useState<QuizItem | null>(null);
+  const [editPrizeTarget, setEditPrizeTarget] = useState<any>(null);
+  const [prizeForm, setPrizeForm] = useState<PrizeForm>(emptyPrizeForm);
+  const [prizeSaving, setPrizeSaving] = useState(false);
+
 
   useEffect(() => {
     setQueryState((prev) => ({ ...prev, search: debouncedSearch, page: 1 }));
@@ -185,6 +262,71 @@ export default function QuizManagementPage() {
       if (res.data.success) { toast.success("Quiz deleted"); setDeleteTarget(null); fetchQuizzes(); }
     } catch (e: any) { toast.error(e?.response?.data?.message ?? "Delete failed"); }
     finally { setDeleteLoading(false); }
+  };
+
+  const handleSavePrize = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!addPrizeTarget) return;
+    if (!prizeForm.title.trim()) {
+      toast.error("Prize title is required");
+      return;
+    }
+    setPrizeSaving(true);
+    try {
+      const formData = new FormData();
+      formData.append("title", prizeForm.title.trim());
+      formData.append("description", prizeForm.description.trim());
+      if (prizeForm.imageFile) formData.append("image", prizeForm.imageFile);
+
+      const response = await axiosInstance.post(
+        `/daily-content/quiz/${addPrizeTarget._id}/prize`,
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+
+      if (response.data.success) {
+        toast.success("Daily prize added successfully!");
+        setAddPrizeTarget(null);
+        setPrizeForm(emptyPrizeForm);
+        fetchQuizzes();
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to add daily prize");
+    } finally {
+      setPrizeSaving(false);
+    }
+  };
+
+  const handleEditPrizeSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editPrizeTarget) return;
+    if (!prizeForm.title.trim()) {
+      toast.error("Prize title is required");
+      return;
+    }
+    setPrizeSaving(true);
+    try {
+      const formData = new FormData();
+      formData.append("title", prizeForm.title.trim());
+      formData.append("description", prizeForm.description.trim());
+      if (prizeForm.imageFile) formData.append("image", prizeForm.imageFile);
+
+      const response = await axiosInstance.put(
+        `/prizes/${editPrizeTarget._id}`,
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+
+      if (response.data.success) {
+        toast.success("Prize updated successfully!");
+        setEditPrizeTarget(null);
+        fetchQuizzes();
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to update prize");
+    } finally {
+      setPrizeSaving(false);
+    }
   };
 
   // ─── Attempts-by-date fetching ────────────────────────────────────────────
@@ -301,6 +443,61 @@ export default function QuizManagementPage() {
           {item.isActive ? 'Active' : 'Inactive'}
         </span>
       ),
+    },
+    {
+      key: "prize",
+      header: "Prize",
+      cell: (item) => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const quizDate = new Date(item.date);
+        quizDate.setHours(0, 0, 0, 0);
+        const isPast = quizDate < today;
+
+        return (
+          <div className="min-w-[120px]">
+            {item.prize ? (
+              <div className="flex items-center gap-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-gray-900" title={item.prize.title}>
+                    {item.prize.title.length > 15 ? item.prize.title.substring(0, 15) + "..." : item.prize.title}
+                  </p>
+                </div>
+                {!isPast && (
+                  <button
+                    onClick={() => {
+                      setEditPrizeTarget(item.prize);
+                      setPrizeForm({
+                        title: item.prize?.title || "",
+                        description: item.prize?.description || "",
+                        imageFile: null,
+                        imagePreview: "",
+                      });
+                    }}
+                    className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                    title="Edit Prize"
+                  >
+                    <Icon icon="mdi:pencil-outline" className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            ) : !isPast ? (
+              <Button
+                variant="secondary"
+                className="!py-1 !px-2 !text-xs"
+                onClick={() => {
+                  setAddPrizeTarget(item);
+                  setPrizeForm(emptyPrizeForm);
+                }}
+              >
+                Add Prize
+              </Button>
+            ) : (
+              <span className="text-xs text-gray-400">—</span>
+            )}
+          </div>
+        );
+      },
     },
     {
       key: "actions",
@@ -551,6 +748,110 @@ export default function QuizManagementPage() {
             </div>
           </div>
         )}
+      </Modal>
+      {/* Add Prize Modal */}
+      <Modal isOpen={!!addPrizeTarget} onClose={() => setAddPrizeTarget(null)} title="Add Daily Prize">
+        <form onSubmit={handleSavePrize} className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Prize Title <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={prizeForm.title}
+              onChange={(e) => setPrizeForm((p) => ({ ...p, title: e.target.value }))}
+              placeholder="e.g. Amazon Gift Card"
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 bg-gray-50/50 focus:bg-white transition-all"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Description <span className="text-gray-400 font-normal text-xs">(Optional)</span>
+            </label>
+            <textarea
+              value={prizeForm.description}
+              onChange={(e) => setPrizeForm((p) => ({ ...p, description: e.target.value }))}
+              rows={3}
+              placeholder="Optional description..."
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 bg-gray-50/50 focus:bg-white transition-all resize-none"
+            />
+          </div>
+
+          <ImagePicker
+            preview={prizeForm.imagePreview}
+            onChange={(file) =>
+              setPrizeForm((p) => ({ ...p, imageFile: file, imagePreview: URL.createObjectURL(file) }))
+            }
+          />
+
+          <div className="flex gap-3 pt-2">
+            <Button type="button" variant="secondary" className="w-full!" onClick={() => setAddPrizeTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              className="w-full!"
+              loading={prizeSaving}
+            >
+              <Icon icon="mdi:gift" className="w-4 h-4" />
+              Save Prize
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit Prize Modal */}
+      <Modal isOpen={!!editPrizeTarget} onClose={() => setEditPrizeTarget(null)} title="Edit Prize">
+        <form onSubmit={handleEditPrizeSave} className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Prize Title <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={prizeForm.title}
+              onChange={(e) => setPrizeForm((p) => ({ ...p, title: e.target.value }))}
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 bg-gray-50/50 focus:bg-white transition-all"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Description <span className="text-gray-400 font-normal text-xs">(Optional)</span>
+            </label>
+            <textarea
+              value={prizeForm.description}
+              onChange={(e) => setPrizeForm((p) => ({ ...p, description: e.target.value }))}
+              rows={3}
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 bg-gray-50/50 focus:bg-white transition-all resize-none"
+            />
+          </div>
+
+          <ImagePicker
+            preview={prizeForm.imagePreview}
+            existingUrl={editPrizeTarget?.imageUrl}
+            onChange={(file) =>
+              setPrizeForm((p) => ({ ...p, imageFile: file, imagePreview: URL.createObjectURL(file) }))
+            }
+          />
+          {editPrizeTarget?.imageUrl && !prizeForm.imagePreview && (
+            <p className="flex items-center gap-1 text-xs text-gray-500">
+              <Icon icon="mdi:information-outline" className="w-3.5 h-3.5 text-blue-400" />
+              Leave empty to keep the current image. Upload a new file to replace it.
+            </p>
+          )}
+
+          <div className="flex gap-3 pt-2">
+            <Button type="button" variant="secondary" className="w-full!" onClick={() => setEditPrizeTarget(null)}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary" className="w-full!" loading={prizeSaving}>
+              Save Changes
+            </Button>
+          </div>
+        </form>
       </Modal>
     </div>
   );
