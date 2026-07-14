@@ -585,7 +585,7 @@ export default function UsersPage(): React.JSX.Element {
     { label: "Total Users", value: String(summaryData?.totalUsers ?? 0), icon: "mdi:account-group-outline", color: "" },
     { label: "Subscribed", value: String(summaryData?.subscribedUsers ?? 0), icon: "mdi:crown-outline", color: "" },
     { label: "Trial Users", value: String(summaryData?.trialUsers ?? 0), icon: "mdi:clock-outline", color: "" },
-    { label: "Suspended", value: String(summaryData?.suspendedUsers ?? 0), icon: "mdi:pause-circle-outline", color: "" },
+    // { label: "Suspended", value: String(summaryData?.suspendedUsers ?? 0), icon: "mdi:pause-circle-outline", color: "" },
     { label: "Blocked", value: String(summaryData?.blockedUsers ?? 0), icon: "mdi:cancel", color: "" },
   ];
 
