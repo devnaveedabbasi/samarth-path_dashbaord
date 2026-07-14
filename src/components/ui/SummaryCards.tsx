@@ -15,7 +15,10 @@ export default function SummaryCards({ data = [] }: SummaryCardsProps) {
 
   return (
     <div
-      className={`mt-4 grid grid-cols-1 sm:grid-cols-2 ${data.length > 3 ? "lg:grid-cols-4" : "lg:grid-cols-3"
+      className={`mt-4 grid grid-cols-1 sm:grid-cols-2 ${
+          data.length <= 3 ? "lg:grid-cols-3"
+        : data.length === 4 ? "lg:grid-cols-4"
+        : "lg:grid-cols-5"
         } gap-4`}
     >
       {data?.map((item, index) => (
