@@ -4,7 +4,7 @@ const nextConfig = {
   return [
     {
       source: '/api/proxy/:path*',
-      destination: 'http://98.94.99.226:5000/:path*',
+      destination: 'https://tribicx.globaleselect.it/:path*',
     },
   ];
 },
