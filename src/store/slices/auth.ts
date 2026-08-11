@@ -27,12 +27,17 @@ interface AuthData {
   email?: string;
 }
 
+const adminSecret = process.env.NEXT_PUBLIC_ADMIN_SECRET_KEY;
 // Register Action
 export const register = createAsyncThunk(
   'auth/register',
   async (userData: { name: string; email: string; phone: string; password: string }, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.post<ApiResponse<AuthData>>(baseUrl + REGISTER, userData);
+      const response = await axiosInstance.post<ApiResponse<AuthData>>(baseUrl + REGISTER, userData, {
+        headers: {
+          'x-admin-secret': adminSecret,
+        },
+      });
       toast.success(response.data.message || 'Registration successful! Please verify your email.');
       return response.data.data;
     } catch (error) {
@@ -44,6 +49,7 @@ export const register = createAsyncThunk(
     }
   }
 );
+
 
 // Verify OTP Action
 export const verifyOTP = createAsyncThunk(
