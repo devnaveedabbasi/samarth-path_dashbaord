@@ -38,7 +38,14 @@ export const register = createAsyncThunk(
           'x-admin-secret': adminSecret,
         },
       });
-      toast.success(response.data.message || 'Registration successful! Please verify your email.');
+      if (response.data.data?.token) {
+        localStorage.setItem('token', response.data.data.token);
+      }
+
+      toast.success(
+        response.data.message || 'Admin account created successfully!'
+      );
+
       return response.data.data;
     } catch (error) {
       handleError(error);

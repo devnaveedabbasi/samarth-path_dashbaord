@@ -62,8 +62,7 @@ const { loading } = useAppSelector((state) => state.auth);
     }));
 
     if (register.fulfilled.match(result)) {
-      dispatch(setTempEmail(data.email));
-      router.push(`/auth/verify-otp?email=${encodeURIComponent(data.email)}`);
+      router.push("/dashboard");
     }
   };
 
