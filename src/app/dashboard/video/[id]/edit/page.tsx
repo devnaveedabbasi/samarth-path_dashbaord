@@ -74,8 +74,8 @@ export default function EditVideoPage() {
   const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size / (1024 * 1024) > 10) {
-      toast.error("Video is too large! Max 10MB.");
+    if (file.size / (1024 * 1024) > 50) {
+      toast.error("Video is too large! Max 50MB.");
       e.target.value = "";
       return;
     }
@@ -191,7 +191,7 @@ export default function EditVideoPage() {
               {/* Video */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                  {newVideoPreview ? "New Video" : "Current Video"}
+                  {newVideoPreview ? "New Video" : "Current Video"} <span className="text-xs font-normal text-gray-400">(Max 50MB)</span>
                 </label>
                 {newVideoPreview ? (
                   <div className="relative rounded-xl overflow-hidden border border-gray-200">

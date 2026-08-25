@@ -50,8 +50,8 @@ export default function AddVideoPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size / (1024 * 1024) > 10) {
-      toast.error("Video is too large! Max 10MB.");
+    if (file.size / (1024 * 1024) > 50) {
+      toast.error("Video is too large! Max 50MB.");
       e.target.value = "";
       return;
     }
