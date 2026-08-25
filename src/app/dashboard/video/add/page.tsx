@@ -56,19 +56,8 @@ export default function AddVideoPage() {
       return;
     }
 
-    const videoEl = document.createElement("video");
-    videoEl.preload = "metadata";
-    videoEl.onloadedmetadata = () => {
-      URL.revokeObjectURL(videoEl.src);
-      if (videoEl.duration > 420) {
-        toast.error("Video exceeds 7 minutes!");
-        e.target.value = "";
-        return;
-      }
-      setVideoFile(file);
-      setVideoPreview(URL.createObjectURL(file));
-    };
-    videoEl.src = URL.createObjectURL(file);
+    setVideoFile(file);
+    setVideoPreview(URL.createObjectURL(file));
   };
 
   const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {

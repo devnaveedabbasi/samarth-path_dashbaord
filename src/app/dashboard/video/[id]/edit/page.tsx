@@ -79,20 +79,9 @@ export default function EditVideoPage() {
       e.target.value = "";
       return;
     }
-    const videoEl = document.createElement("video");
-    videoEl.preload = "metadata";
-    videoEl.onloadedmetadata = () => {
-      URL.revokeObjectURL(videoEl.src);
-      if (videoEl.duration > 420) {
-        toast.error("Video exceeds 7 minutes!");
-        e.target.value = "";
-        return;
-      }
-      if (newVideoPreview) URL.revokeObjectURL(newVideoPreview);
-      setNewVideoFile(file);
-      setNewVideoPreview(URL.createObjectURL(file));
-    };
-    videoEl.src = URL.createObjectURL(file);
+    if (newVideoPreview) URL.revokeObjectURL(newVideoPreview);
+    setNewVideoFile(file);
+    setNewVideoPreview(URL.createObjectURL(file));
   };
 
   const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
