@@ -162,7 +162,7 @@ export default function AddVideoPage() {
               {/* Video */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                  Video File <span className="text-xs font-normal text-gray-400">(Max 10MB / 7min)</span>
+                  Video File <span className="text-xs font-normal text-gray-400">(Max 50MB)</span>
                 </label>
                 {videoPreview ? (
                   <div className="relative rounded-xl overflow-hidden border border-gray-200">
