@@ -13,7 +13,7 @@ import Button from "@/components/ui/Button";
 
 const schema = Yup.object({
   title: Yup.string().min(2, "Min 2 characters").max(200, "Max 200 characters").required("Title is required"),
-    description: Yup.string().min(10, "Min 10 characters").max(1000, "Max 1000 characters").required("Description is required"),
+  description: Yup.string().min(10, "Min 10 characters").max(1000, "Max 1000 characters").required("Description is required"),
   scheduledDate: Yup.string().required("Publish date is required"),
   hasListenOnlyMode: Yup.boolean().default(true),
 });
@@ -135,7 +135,7 @@ export default function AddVideoPage() {
           </button>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Add Video Content</h1>
-            <p className="text-sm text-gray-500">Max 10MB | Max 7 Minutes</p>
+            <p className="text-sm text-gray-500">Max 50MB</p>
           </div>
         </div>
 
